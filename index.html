@@ -23,16 +23,16 @@ button.primary:hover:not(:disabled){background:#3469a8}
 a{color:var(--navy)}
 .topbar{height:62px;background:#fff;border-bottom:1px solid var(--border)}
 .topbar-inner{max-width:1100px;padding:0 26px;margin:auto;display:flex;align-items:center;justify-content:space-between;height:100%}
-.brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:-.5px;color:#254668}.brand-symbol{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:#284e7e;color:#fff;font-size:14px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:-.5px;color:#254668}
 .profile{display:flex;align-items:center;gap:11px;font-size:13px;color:#63718a}
 .profile button{min-height:32px;padding:4px 10px;font-size:12px}
 #sync-status{border:0;background:none;padding:0;font-size:12px;min-height:20px;color:#5b876d}
 #sync-status.warning{color:#b1662d}
-.container{max-width:1100px;margin:0 auto;padding:40px 26px 90px}
+.container{max-width:1100px;margin:0 auto;padding:40px 26px 90px}.container>h1{margin-bottom:26px}
 .muted,.support{color:var(--muted)}
-.eyebrow{font-size:12px;text-transform:uppercase;font-weight:800;letter-spacing:1.3px;color:#7590af;margin:0 0 4px}
+
 h1{font-size:34px;line-height:1.3;letter-spacing:-1.5px;margin:0 0 9px;font-weight:850}h2{font-size:24px;letter-spacing:-.75px;margin:0}h3{letter-spacing:-.45px}
-.subtitle{color:#728095;font-size:15px;margin:0 0 30px}
+
 .shell{display:grid;grid-template-columns:220px minmax(0,1fr);gap:28px;align-items:start}
 .sidebar{background:#fff;border:1px solid var(--border);border-radius:16px;padding:20px 12px}
 .sidebar-head{font-size:11px;color:#93a0b3;font-weight:850;letter-spacing:1.2px;margin:0 12px 12px}
@@ -58,8 +58,8 @@ h1{font-size:34px;line-height:1.3;letter-spacing:-1.5px;margin:0 0 9px;font-weig
 .segmented button{min-height:34px;padding:6px 12px;border:0;background:none;color:#758398;font-size:13px;font-weight:750}
 .segmented button[aria-pressed=true]{background:#fff;color:var(--navy);box-shadow:0 1px 4px #1c345c18}
 .checkbox{display:flex;align-items:center;gap:8px;font-size:13px;color:#556780;font-weight:670;padding:0 5px;cursor:pointer}.checkbox input{accent-color:#315c95}
-.utilities{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:18px}
-.utilities button{font-size:12px;min-height:32px;padding:5px 11px;color:#5f7392}
+
+
 .question-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:15px}
 .question-count{font-size:13px;color:#8794a7;font-weight:720}
 .question-navigation{display:flex;align-items:center;gap:7px}.question-navigation button{min-height:34px;padding:5px 11px;font-size:12px}
@@ -107,15 +107,15 @@ h1{font-size:34px;line-height:1.3;letter-spacing:-1.5px;margin:0 0 9px;font-weig
 .auth-link{display:block;min-height:auto;padding:3px 0;margin:19px auto 0;border:0;background:none;color:#315f96;text-decoration:underline;text-underline-offset:3px;font-size:13px}
 .auth-message{min-height:21px;color:#ab4c44;margin:14px 0 0!important;font-size:12px!important}.auth-message.success{color:#267247}
 @media(max-width:850px){.shell{grid-template-columns:1fr;gap:18px}.sidebar{display:flex;gap:5px;overflow-x:auto;padding:10px;white-space:nowrap}.sidebar-head{display:none}.subject-button{width:auto;min-width:85px;justify-content:center;gap:5px;margin:0;white-space:nowrap}.subject-button small{display:none}}
-@media(max-width:590px){.topbar-inner{padding:0 16px}.brand{font-size:13px}.brand-symbol{width:27px;height:27px}.profile{gap:5px}.profile span{font-size:12px}.profile #sync-status{max-width:98px;white-space:normal;line-height:1.3;text-align:center}.container{padding:27px 14px 65px}h1{font-size:28px}.subtitle{font-size:13px;margin-bottom:20px}.content-card{padding:22px 16px}.summary-card{padding:16px}.summary-title{align-items:flex-start;flex-wrap:wrap}.summary-title strong{font-size:16px}.controls{gap:8px}.controls select{flex:1}.passage{font-size:19px;padding:17px 14px;line-height:2.15}.cloze{font-size:13px;padding:5px 7px}.answer-grid{grid-template-columns:1fr}.section-nav{gap:19px}.section-nav button{font-size:14px}.stats-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.stat-row{flex-wrap:wrap}.auth-shell{padding:6vh 16px}.auth-card{padding:23px}}
+@media(max-width:590px){.topbar-inner{padding:0 16px}.brand{font-size:13px}.profile{gap:5px}.profile span{font-size:12px}.profile #sync-status{max-width:98px;white-space:normal;line-height:1.3;text-align:center}.container{padding:27px 14px 65px}h1{font-size:28px}.content-card{padding:22px 16px}.summary-card{padding:16px}.summary-title{align-items:flex-start;flex-wrap:wrap}.summary-title strong{font-size:16px}.controls{gap:8px}.controls select{flex:1}.passage{font-size:19px;padding:17px 14px;line-height:2.15}.cloze{font-size:13px;padding:5px 7px}.answer-grid{grid-template-columns:1fr}.section-nav{gap:19px}.section-nav button{font-size:14px}.stats-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.stat-row{flex-wrap:wrap}.auth-shell{padding:6vh 16px}.auth-card{padding:23px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
 </style>
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><div class="brand"><span class="brand-symbol">期</span><span>본과 2-2 · 기말고사</span></div><div id="account-profile" class="profile"><span id="account-name"></span><button id="sync-status" type="button" title="클릭하여 다시 동기화" hidden></button><button id="sign-out" type="button" hidden>로그아웃</button></div></div></header>
+<header class="topbar"><div class="topbar-inner"><div class="brand"><span>본과 2-2 · 기말고사</span></div><div id="account-profile" class="profile"><span id="account-name"></span><button id="sync-status" type="button" title="클릭하여 다시 동기화" hidden></button><button id="sign-out" type="button" hidden>로그아웃</button></div></div></header>
 <section id="account-gate" class="auth-shell">
  <div class="auth-layout">
-  <p class="eyebrow">2026 FALL · STUDY</p><h1>기말고사 학습</h1>
+  <h1>기말고사 학습</h1>
   <div class="auth-card">
    <div id="auth-login"><h2>로그인</h2><p>중간고사 때 사용한 이름과 비밀번호로 그대로 로그인하세요.</p><form id="login-form"><label>이름 (아이디)<input id="login-name" name="username" autocomplete="username" required placeholder="이름 입력"></label><label>비밀번호<input id="login-password" type="password" name="password" autocomplete="current-password" required></label><button class="primary" type="submit">로그인</button></form><button class="auth-link" id="open-register" type="button">처음 이용하시나요? 회원가입</button></div>
    <div id="auth-register" hidden><h2>최초 회원가입</h2><p>지정된 6명 중 최초 가입자만 비밀번호를 등록할 수 있습니다. 이미 가입했다면 로그인해 주세요.</p><form id="register-form"><label>이름 (아이디)<input id="register-name" autocomplete="username" required></label><label>비밀번호 (6자 이상)<input id="register-password" type="password" minlength="6" autocomplete="new-password" required></label><label>비밀번호 확인<input id="register-confirm" type="password" minlength="6" autocomplete="new-password" required></label><button class="primary" type="submit">회원가입</button></form><button class="auth-link" id="open-login" type="button">로그인으로 돌아가기</button></div>
@@ -125,9 +125,9 @@ h1{font-size:34px;line-height:1.3;letter-spacing:-1.5px;margin:0 0 9px;font-weig
 </section>
 <div id="signed-in" hidden>
  <main class="container">
-  <p class="eyebrow">ACADEMIC YEAR 2026 · SECOND SEMESTER</p>
+  
   <h1>본과 2-2 기말고사</h1>
-  <p class="subtitle">각자 학습 진도와 오답 기록을 따로 저장하는 시험 대비 퀴즈</p>
+  
   <div class="shell">
    <aside class="sidebar" aria-label="과목 선택">
     <div class="sidebar-head">SUBJECTS</div>
@@ -151,10 +151,11 @@ h1{font-size:34px;line-height:1.3;letter-spacing:-1.5px;margin:0 0 9px;font-weig
        <div class="study-head"><div><h2>통암기</h2><p class="muted" style="font-size:13px">기말고사 조문 26개 · 빈칸 자동 생성</p></div></div>
        <div class="controls">
         <select id="version" aria-label="빈칸 버전"><option value="1">빈칸 ver.1 (3개)</option><option value="2">빈칸 ver.2 (5개)</option><option value="3">빈칸 ver.3 (7개)</option><option value="4">빈칸 ver.4 (9개)</option></select>
+        <select id="order-mode" aria-label="조문 출제 순서"><option value="ordered">순서대로</option><option value="random">무작위</option></select>
         <div class="segmented" role="group" aria-label="풀이 방식"><button id="mode-typing" type="button" aria-pressed="true">타자 입력</button><button id="mode-writing" type="button" aria-pressed="false">한자쓰기</button></div>
         <label class="checkbox"><input type="checkbox" id="wrong-only">오답만</label>
        </div>
-       <div class="utilities"><button id="shuffle" type="button">무작위 섞기</button><button id="reset-order" type="button">순서대로</button></div>
+       
        <div id="quiz-content">
         <div class="question-head"><span id="question-position" class="question-count"></span><div class="question-navigation"><button id="question-prior" type="button">← 이전</button><button id="question-next" type="button">다음 →</button></div></div>
         <h3 id="question-num" class="question-number"></h3><div id="question-meta" class="question-meta"></div>
