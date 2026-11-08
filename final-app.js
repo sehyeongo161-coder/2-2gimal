@@ -148,6 +148,7 @@ function selectSubject(name){
 }
 function syncControls(){
  $('version').value=String(state.version);
+ $('order-mode').value=state.order.every((num,index)=>num===NUMBERS[index])?'ordered':'random';
  $('mode-typing').setAttribute('aria-pressed',String(state.mode==='typing'));
  $('mode-writing').setAttribute('aria-pressed',String(state.mode==='writing'));
  $('wrong-only').checked=state.wrongOnly;
@@ -348,8 +349,10 @@ function initEvents(){
  $('mode-typing').onclick=()=>{state.mode='typing';resetQuestion();queueSave();renderQuiz();};
  $('mode-writing').onclick=()=>{state.mode='writing';resetQuestion();queueSave();renderQuiz();};
  $('wrong-only').onchange=event=>{state.wrongOnly=event.target.checked;state.pos=0;resetQuestion();queueSave();renderQuiz();};
- $('shuffle').onclick=shuffle;
- $('reset-order').onclick=()=>{state.order=[...NUMBERS];state.pos=0;resetQuestion();queueSave();renderQuiz();};
+ $('order-mode').onchange=event=>{
+  if(event.target.value==='random'){shuffle();return;}
+  state.order=[...NUMBERS];state.pos=0;resetQuestion();queueSave();renderQuiz();
+ };
  $('question-prior').onclick=()=>go(-1);
  $('question-next').onclick=()=>go(1);
  $('button-next').onclick=()=>go(1);
