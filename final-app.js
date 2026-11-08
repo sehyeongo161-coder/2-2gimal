@@ -184,6 +184,7 @@ function renderQuiz(){
  });
  passage.append(document.createTextNode(original.slice(last)));
  $('answer-fields').replaceChildren();
+ $('answer-fields').style.setProperty('--blank-rows',String(Math.max(1,Math.ceil(currentBlanks.length/2))));
  const writing=state.mode==='writing';
  currentBlanks.forEach((blank,i)=>{
   const field=document.createElement('label');field.className='answer-field';
