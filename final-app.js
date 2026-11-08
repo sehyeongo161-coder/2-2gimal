@@ -203,8 +203,8 @@ function renderQuiz(){
  $('question-prior').disabled=items.length<2;$('question-next').disabled=items.length<2;
  if(writing)$('writing-tip').textContent='종이에 한자로 써 본 다음 정답 보기를 눌러 스스로 채점하세요.';
 }
-function showFeedback(correct,revealed,drafts){
- const item=currentClause();if(!item)return;
+function showFeedback(item,correct,revealed,drafts){
+ if(!item)return;
  const panel=$('answer-feedback');panel.replaceChildren();
  panel.append(textNode('h3',correct?'feedback-good':'feedback-bad',correct?'O · 정답':'X · '+(revealed?'정답 확인':'오답')));
  currentBlanks.forEach((blank,i)=>{
@@ -235,7 +235,7 @@ function finishAttempt(correct,revealed,drafts){
  };
  recordAttempt(item.num,correct,revealed);
  queueSave();
- showFeedback(correct,revealed,drafts);
+ showFeedback(item,correct,revealed,drafts);
  syncControls();
 }
 function gradeTyped(){
@@ -374,11 +374,13 @@ async function activate(user){
   await loadProgress();
   authenticated=true;
   $('account-name').textContent=name+'님';
+  $('sync-status').hidden=false;$('sign-out').hidden=false;
   $('account-gate').hidden=true;$('signed-in').hidden=false;
   resetQuestion();selectSubject('sanghan');setView('quiz');
  }catch(error){
   console.error('계정 확인 또는 콘텐츠 로드 실패:',error);
   authenticated=false;uid='';$('signed-in').hidden=true;$('account-gate').hidden=false;
+  $('sync-status').hidden=true;$('sign-out').hidden=true;
   message(error.message==='NOT_APPROVED'?'이름별 승인 설정이 완료되지 않은 계정입니다.':'로그인 확인에 실패했습니다. Firebase 연결을 확인해 주세요.');
   if(error.message==='NOT_APPROVED')await signOut(auth);
  }
@@ -393,7 +395,7 @@ if(!firebaseConfig.apiKey||firebaseConfig.apiKey.startsWith('YOUR_')||firebaseCo
   await setPersistence(auth,browserSessionPersistence);
   onAuthStateChanged(auth,async user=>{
    if(registering)return;
-   if(!user){authenticated=false;uid='';$('signed-in').hidden=true;$('account-gate').hidden=false;return;}
+   if(!user){authenticated=false;uid='';$('signed-in').hidden=true;$('account-gate').hidden=false;$('sync-status').hidden=true;$('sign-out').hidden=true;return;}
    await activate(user);
   });
  }catch(error){console.error(error);message('Firebase를 시작할 수 없습니다. 연결 상태를 확인해 주세요.');}
