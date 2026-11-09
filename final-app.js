@@ -328,6 +328,7 @@ function go(delta){
  state.pos=(Math.min(state.pos,items.length-1)+delta+items.length)%items.length;
  resetQuestion();queueSave();renderQuiz();
  $('question-num').scrollIntoView({behavior:'smooth',block:'start'});
+ if(state.mode==='typing')requestAnimationFrame(()=>$('answer-0')?.focus({preventScroll:true}));
 }
 function shuffle(){
  for(let i=state.order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[state.order[i],state.order[j]]=[state.order[j],state.order[i]];}
