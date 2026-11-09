@@ -220,7 +220,16 @@ function renderQuiz(){
   if(blank.pastYear)caption.append(textNode('span','past-input-tag',blank.pastYear+' 기출'));
   field.append(caption);
   const input=document.createElement('input');input.type='text';input.id='answer-'+i;input.autocomplete='off';input.spellcheck=false;input.placeholder='한자 또는 독음 입력';input.dataset.index=String(i);
-  input.addEventListener('keydown',event=>{if(event.key!=='Enter'||event.isComposing)return;event.preventDefault();const next=$('answer-'+(i+1));if(next)next.focus();else gradeTyped();});
+  input.addEventListener('keydown',event=>{
+   if(event.key!=='Enter'||event.isComposing||event.keyCode===229)return;
+   event.preventDefault();
+   const entries=currentBlanks.map((_,index)=>$('answer-'+index));
+   // 마지막 칸까지 모두 입력했으면 Enter로 채점합니다.
+   if(entries.every(node=>node?.value.trim())){gradeTyped();return;}
+   // 아직 비어 있는 칸은 왼쪽 위부터의 번호 순서대로 채웁니다.
+   const next=entries.find((node,index)=>index>i&&!node.value.trim())||entries.find(node=>!node.value.trim());
+   if(next&&next!==input)next.focus();
+  });
   field.append(input);$('answer-fields').append(field);
  });
  $('answer-fields').hidden=writing;
@@ -240,9 +249,27 @@ function showFeedback(item,correct,revealed,drafts){
  const panel=$('answer-feedback');panel.replaceChildren();
  panel.append(textNode('h3',correct?'feedback-good':'feedback-bad',correct?'O · 정답':'X · '+(revealed?'정답 확인':'오답')));
  currentBlanks.forEach((blank,i)=>{
-  const row=textNode('div','result-row','빈칸 '+(i+1)+'  '+blank.text);
   const user=String(drafts?.[i]||'').trim();
-  if(state.mode==='typing'&&!revealed)row.append(textNode('small','result-your','입력: '+(user||'(미입력)')+(answerMatches(user,blank.text)?'  ✓':'  ✕')));
+  const evaluated=state.mode==='typing'&&!revealed;
+  const passed=evaluated&&answerMatches(user,blank.text);
+  const row=textNode('div','result-row'+(evaluated?(passed?' result-correct':' result-wrong'):''),(evaluated?(passed?'O  ':'X  '):'')+'빈칸 '+(i+1)+'  '+blank.text);
+  if(evaluated){
+   row.append(textNode('small','result-your','입력: '+(user||'(미입력)')));
+   // 개별 빈칸과 입력란에도 O/X 결과 표시
+   const passageBlank=$('clause-text').querySelector('.cloze[data-index="'+i+'"]');
+   if(passageBlank){
+    passageBlank.classList.add(passed?'cloze-correct':'cloze-wrong');
+    passageBlank.append(textNode('span','blank-verdict '+(passed?'verdict-correct':'verdict-wrong'),passed?'O':'X'));
+   }
+   const input=$('answer-'+i);
+   if(input){
+    input.classList.add(passed?'input-correct':'input-wrong');
+    input.setAttribute('aria-invalid',String(!passed));
+    const verdict=textNode('span','input-verdict '+(passed?'verdict-correct':'verdict-wrong'),passed?'O':'X');
+    verdict.setAttribute('aria-label',passed?'정답':'오답');
+    input.after(verdict);
+   }
+  }
   panel.append(row);
  });
  panel.hidden=false;
@@ -252,6 +279,8 @@ function showFeedback(item,correct,revealed,drafts){
  $('button-next').hidden=false;
  $('answer-fields').querySelectorAll('input').forEach(i=>i.disabled=true);
  graded=true;
+ // Enter를 다시 누르면 다음 조문으로 넘어가도록 포커스를 옮깁니다.
+ if(state.mode==='typing')$('button-next').focus({preventScroll:true});
  requestAnimationFrame(()=>panel.scrollIntoView({behavior:'smooth',block:'nearest'}));
 }
 function finishAttempt(correct,revealed,drafts){
