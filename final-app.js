@@ -102,6 +102,8 @@ function currentClause(){
  const items=getList();
  return CLAUSE_MAP.get(items[Math.min(state.pos,items.length-1)])||null;
 }
+// 기말고사 21학번 족보: 실제 빈칸 구간이 명확히 복기된 4문항만 표기.
+const PAST_EXAM_BLANKS=Object.freeze({105:[{text:'調胃承氣湯',year:'21학번'}],109:[{text:'大渴欲飮水',year:'21학번'}],118:[{text:'因燒鍼煩躁',year:'21학번'}],136:[{text:'但頭微汗出',year:'21학번'}]});
 function seedHash(text){let h=2166136261;for(const ch of text){h^=ch.codePointAt(0);h=Math.imul(h,16777619);}return h>>>0;}
 function makeBlanks(clause,version){
  const candidates=[];
@@ -122,6 +124,11 @@ function makeBlanks(clause,version){
  const target=[0,3,5,7,9][version];
  const sorted=[...candidates].sort((a,b)=>seedHash(clause.num+':'+version+':'+a.start)-seedHash(clause.num+':'+version+':'+b.start));
  const picked=[];
+ // 실제 기출의 글자 범위는 무작위 빈칸 후보보다 먼저 확보합니다.
+ for(const exam of PAST_EXAM_BLANKS[clause.num]||[]){
+  const start=clause.original.indexOf(exam.text);
+  if(start>=0)picked.push({start,end:start+exam.text.length,text:exam.text,pastYear:exam.year});
+ }
  for(const c of sorted){if(picked.length>=target)break;if(!picked.some(x=>x.start<c.end&&c.start<x.end))picked.push(c);}
  return picked.sort((a,b)=>a.start-b.start);
 }
@@ -179,7 +186,8 @@ function renderQuiz(){
  let last=0;
  currentBlanks.forEach((blank,i)=>{
   passage.append(document.createTextNode(original.slice(last,blank.start)));
-  const slot=textNode('span','cloze','('+(i+1)+') ______');slot.dataset.index=String(i);
+  const slot=textNode('span','cloze'+(blank.pastYear?' past-cloze':''),'('+(i+1)+') ______');slot.dataset.index=String(i);
+  if(blank.pastYear)slot.append(textNode('span','past-tag',blank.pastYear+' 기출'));
   passage.append(slot);last=blank.end;
  });
  passage.append(document.createTextNode(original.slice(last)));
@@ -188,7 +196,9 @@ function renderQuiz(){
  const writing=state.mode==='writing';
  currentBlanks.forEach((blank,i)=>{
   const field=document.createElement('label');field.className='answer-field';
-  const caption=textNode('span','field-label','빈칸 '+(i+1));field.append(caption);
+  const caption=textNode('span','field-label','빈칸 '+(i+1));
+  if(blank.pastYear)caption.append(textNode('span','past-input-tag',blank.pastYear+' 기출'));
+  field.append(caption);
   const input=document.createElement('input');input.type='text';input.id='answer-'+i;input.autocomplete='off';input.spellcheck=false;input.placeholder='한자로 입력';input.dataset.index=String(i);
   input.addEventListener('keydown',event=>{if(event.key!=='Enter'||event.isComposing)return;event.preventDefault();const next=$('answer-'+(i+1));if(next)next.focus();else gradeTyped();});
   field.append(input);$('answer-fields').append(field);
