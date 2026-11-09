@@ -4,6 +4,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, doc, getDoc, getDocs, collection, setDoc, increment, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import { firebaseConfig } from './firebase-config.js';
 import { CLAUSES } from './final-shanghan-data.js';
+import { HANJA_READINGS, DUEUM_PAIRS, ALT_READINGS } from './final-hanja-readings.js';
 
 const $ = id => document.getElementById(id);
 const NAMES = ['고세현','석주형','홍대진','안선웅','박준영','김지원'];
@@ -135,6 +136,25 @@ function makeBlanks(clause,version){
 function normalizeAnswer(value){
  return String(value||'').normalize('NFKC').replace(/[\s,.，。．、;；:：!?！？'"‘’“”\-·]/g,'').replace(/[爲为]/g,'為').replace(/不/g,'不').toLowerCase();
 }
+// 한자 원문, 한글 독음, 한자+한글 혼용을 글자 위치별로 비교합니다.
+// 則(칙/즉), 便(편/변), 數(수/삭), 惡(악/오) 및 두음법칙을 허용합니다.
+function answerMatches(input,expected){
+ const given=[...normalizeAnswer(input)],original=[...normalizeAnswer(expected)];
+ if(given.length!==original.length)return false;
+ return original.every((ch,i)=>{
+  const typed=given[i];
+  if(typed===ch)return true;
+  if(!/^[가-힣]$/.test(typed))return false;
+  const primary=HANJA_READINGS[ch];
+  if(!primary)return false;
+  const allowed=new Set([primary,...(ALT_READINGS[ch]||[])]);
+  for(const [before,after] of DUEUM_PAIRS){
+   if(allowed.has(before))allowed.add(after);
+   if(allowed.has(after))allowed.add(before);
+  }
+  return allowed.has(typed);
+ });
+}
 function textNode(tag,className,value){const el=document.createElement(tag);if(className)el.className=className;el.textContent=value;return el;}
 function setView(view){
  currentView=view;
@@ -199,7 +219,7 @@ function renderQuiz(){
   const caption=textNode('span','field-label','빈칸 '+(i+1));
   if(blank.pastYear)caption.append(textNode('span','past-input-tag',blank.pastYear+' 기출'));
   field.append(caption);
-  const input=document.createElement('input');input.type='text';input.id='answer-'+i;input.autocomplete='off';input.spellcheck=false;input.placeholder='한자로 입력';input.dataset.index=String(i);
+  const input=document.createElement('input');input.type='text';input.id='answer-'+i;input.autocomplete='off';input.spellcheck=false;input.placeholder='한자 또는 독음 입력';input.dataset.index=String(i);
   input.addEventListener('keydown',event=>{if(event.key!=='Enter'||event.isComposing)return;event.preventDefault();const next=$('answer-'+(i+1));if(next)next.focus();else gradeTyped();});
   field.append(input);$('answer-fields').append(field);
  });
@@ -222,7 +242,7 @@ function showFeedback(item,correct,revealed,drafts){
  currentBlanks.forEach((blank,i)=>{
   const row=textNode('div','result-row','빈칸 '+(i+1)+'  '+blank.text);
   const user=String(drafts?.[i]||'').trim();
-  if(state.mode==='typing'&&!revealed)row.append(textNode('small','result-your','입력: '+(user||'(미입력)')+(normalizeAnswer(user)===normalizeAnswer(blank.text)?'  ✓':'  ✕')));
+  if(state.mode==='typing'&&!revealed)row.append(textNode('small','result-your','입력: '+(user||'(미입력)')+(answerMatches(user,blank.text)?'  ✓':'  ✕')));
   panel.append(row);
  });
  panel.hidden=false;
@@ -253,7 +273,7 @@ function finishAttempt(correct,revealed,drafts){
 function gradeTyped(){
  if(!state||graded||state.mode!=='typing')return;
  const drafts=currentBlanks.map((_,i)=>$('answer-'+i)?.value||'');
- const correct=drafts.every((v,i)=>normalizeAnswer(v)===normalizeAnswer(currentBlanks[i].text));
+ const correct=drafts.every((v,i)=>answerMatches(v,currentBlanks[i].text));
  finishAttempt(correct,false,drafts);
 }
 function revealAnswer(){
