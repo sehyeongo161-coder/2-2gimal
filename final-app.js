@@ -32,16 +32,18 @@ function friendly(error){
  return '요청에 실패했습니다. 연결 상태와 Firebase 설정을 확인해 주세요.';
 }
 function localKey(){return 'final-2026:pending:v1:'+uid;}
-function defaultState(){return {schema:1,updatedAt:0,order:[...NUMBERS],pos:0,version:1,mode:'typing',wrongOnly:false,history:{}};}
+function defaultState(){return {schema:1,updatedAt:0,order:[...NUMBERS],pos:0,version:1,mode:'typing',wrongOnly:false,history:{},blankCoverage:{},blankRounds:{}};}
 function safeState(data){
  const s=defaultState();
  if(!data||typeof data!=='object')return s;
  if(Array.isArray(data.order)&&data.order.length===NUMBERS.length&&NUMBERS.every(n=>data.order.includes(n)))s.order=[...data.order];
  s.pos=Number.isInteger(data.pos)?Math.max(0,Math.min(NUMBERS.length-1,data.pos)):0;
- s.version=[1,2,3,4].includes(Number(data.version))?Number(data.version):1;
+ s.version=[1,2,3,4,5].includes(Number(data.version))?Number(data.version):1;
  s.mode=data.mode==='writing'?'writing':'typing';
  s.wrongOnly=data.wrongOnly===true;
- s.history=data.history&&typeof data.history==='object'?data.history:{};
+ s.history=data.history&&typeof data.history==='object'&&!Array.isArray(data.history)?data.history:{};
+ s.blankCoverage=data.blankCoverage&&typeof data.blankCoverage==='object'&&!Array.isArray(data.blankCoverage)?data.blankCoverage:{};
+ s.blankRounds=data.blankRounds&&typeof data.blankRounds==='object'&&!Array.isArray(data.blankRounds)?data.blankRounds:{};
  s.updatedAt=Number(data.updatedAt)||0;
  return s;
 }
@@ -106,32 +108,50 @@ function currentClause(){
 // 기말고사 21학번 족보: 실제 빈칸 구간이 명확히 복기된 4문항만 표기.
 const PAST_EXAM_BLANKS=Object.freeze({105:[{text:'調胃承氣湯',year:'21학번'}],109:[{text:'大渴欲飮水',year:'21학번'}],118:[{text:'因燒鍼煩躁',year:'21학번'}],136:[{text:'但頭微汗出',year:'21학번'}]});
 function seedHash(text){let h=2166136261;for(const ch of text){h^=ch.codePointAt(0);h=Math.imul(h,16777619);}return h>>>0;}
-function makeBlanks(clause,version){
- const candidates=[];
- const hanzi=/[\u3400-\u9fff\uf900-\ufaff]+/g;
- for(const match of clause.original.matchAll(hanzi)){
-  const token=match[0],offset=match.index;
-  if(token.length<2)continue;
-  if(token.length<=7)candidates.push({start:offset,end:offset+token.length,text:token});
-  else{
-   const size=Math.min(6,Math.max(3,Math.ceil(token.length/3)));
-   for(let p=0;p<token.length;p+=size){
-    const length=Math.min(size,token.length-p);
-    if(length<2)continue;
-    candidates.push({start:offset+p,end:offset+p+length,text:token.slice(p,p+length)});
-   }
+// 모든 한자에 대응하는 후보 덩어리를 만들고 기출 원형을 유지합니다.
+function getBlankCandidates(clause){
+ const original=clause.original,spans=[];
+ for(const exam of PAST_EXAM_BLANKS[clause.num]||[]){
+  const start=original.indexOf(exam.text);
+  if(start>=0)spans.push({start,end:start+exam.text.length,text:exam.text,pastYear:exam.year});
+ }
+ const result=[];
+ function partition(from,to){
+  const length=to-from;if(length<=0)return;
+  const parts=Math.max(1,Math.round(length/4));
+  const base=Math.floor(length/parts),remainder=length%parts;
+  let at=from;
+  for(let i=0;i<parts;i++){
+   const end=at+base+(i<remainder?1:0);
+   result.push({start:at,end,text:original.slice(at,end),id:at+':'+end});
+   at=end;
   }
  }
- const target=[0,3,5,7,9][version];
- const sorted=[...candidates].sort((a,b)=>seedHash(clause.num+':'+version+':'+a.start)-seedHash(clause.num+':'+version+':'+b.start));
- const picked=[];
- // 실제 기출의 글자 범위는 무작위 빈칸 후보보다 먼저 확보합니다.
- for(const exam of PAST_EXAM_BLANKS[clause.num]||[]){
-  const start=clause.original.indexOf(exam.text);
-  if(start>=0)picked.push({start,end:start+exam.text.length,text:exam.text,pastYear:exam.year});
+ for(const match of original.matchAll(/[\u3400-\u9fff\uf900-\ufaff]+/g)){
+  const from=match.index,to=from+match[0].length;
+  let cursor=from;
+  for(const exam of spans.filter(x=>x.start>=from&&x.end<=to).sort((a,b)=>a.start-b.start)){
+   partition(cursor,exam.start);
+   result.push({...exam,id:exam.start+':'+exam.end});
+   cursor=exam.end;
+  }
+  partition(cursor,to);
  }
- for(const c of sorted){if(picked.length>=target)break;if(!picked.some(x=>x.start<c.end&&c.start<x.end))picked.push(c);}
- return picked.sort((a,b)=>a.start-b.start);
+ return result;
+}
+function makeBlanks(clause,version,progress=state){
+ const candidates=getBlankCandidates(clause);
+ if(version===5)return candidates;
+ const target=[0,3,5,7,9][version]||3;
+ const coverage=progress?.blankCoverage?.[clause.num]||{};
+ const rounds=Number(progress?.blankRounds?.[clause.num+':'+version])||0;
+ const exams=candidates.filter(x=>x.pastYear);
+ const pool=candidates.filter(x=>!x.pastYear);
+ pool.sort((a,b)=>seedHash(clause.num+':'+version+':'+a.start)-seedHash(clause.num+':'+version+':'+b.start));
+ const at=pool.length?((rounds%pool.length)+pool.length)%pool.length:0;
+ const rotated=[...pool.slice(at),...pool.slice(0,at)];
+ rotated.sort((a,b)=>(Number(coverage[a.id]?.tries)||0)-(Number(coverage[b.id]?.tries)||0));
+ return [...exams,...rotated.slice(0,Math.max(0,target-exams.length))].sort((a,b)=>a.start-b.start);
 }
 function normalizeAnswer(value){
  return String(value||'').normalize('NFKC').replace(/[\s,.，。．、;；:：!?！？'"‘’“”\-·]/g,'').replace(/[爲为]/g,'為').replace(/不/g,'不').toLowerCase();
@@ -197,10 +217,13 @@ function renderQuiz(){
   $('empty-description').textContent=state.wrongOnly?'현재 오답으로 남아 있는 조문이 없습니다. 오답만 보기를 해제해 주세요.':'등록된 조문이 없습니다.';
   return;
  }
- currentBlanks=makeBlanks(item,state.version);
+ currentBlanks=makeBlanks(item,state.version,state);
+ const chunks=getBlankCandidates(item);
+ const practiced=chunks.filter(c=>(state.blankCoverage[item.num]?.[c.id]?.tries||0)>0).length;
  $('question-position').textContent=(items.indexOf(item.num)+1)+' / '+items.length;
  $('question-num').textContent=item.num+'조';
- $('question-meta').textContent='기말고사 통암기 · '+currentBlanks.length+'개 빈칸';
+ $('question-meta').textContent=currentBlanks.length+'개 빈칸 · '+practiced+'/'+chunks.length+' 덩어리 학습';
+ $('new-blanks').hidden=state.version===5;
  $('clause-text').replaceChildren();
  const passage=$('clause-text'),original=item.original;
  let last=0;
@@ -294,6 +317,17 @@ function finishAttempt(correct,revealed,drafts){
   lastCorrect:correct&&!revealed,
   lastAt:Date.now()
  };
+ const usage=state.blankCoverage[item.num] ||= {};
+ currentBlanks.forEach((blank,i)=>{
+  const passed=state.mode==='typing'&&!revealed
+   ? answerMatches(drafts?.[i]||'',blank.text)
+   : state.mode==='writing'&&!revealed&&correct;
+  const oldChunk=usage[blank.id]||{tries:0,wrong:0};
+  usage[blank.id]={
+   tries:(Number(oldChunk.tries)||0)+1,
+   wrong:(Number(oldChunk.wrong)||0)+(passed?0:1)
+  };
+ });
  recordAttempt(item.num,correct,revealed);
  queueSave();
  showFeedback(item,correct,revealed,drafts);
@@ -407,6 +441,14 @@ function initEvents(){
  document.querySelectorAll('[data-subject]').forEach(button=>button.onclick=()=>selectSubject(button.dataset.subject));
  document.querySelectorAll('[data-view]').forEach(button=>button.onclick=()=>setView(button.dataset.view));
  $('version').onchange=event=>{state.version=Number(event.target.value);resetQuestion();queueSave();renderQuiz();};
+ $('new-blanks').onclick=()=>{
+  const clause=currentClause();
+  if(!clause||state.version===5)return;
+  const key=clause.num+':'+state.version;
+  state.blankRounds[key]=(Number(state.blankRounds[key])||0)+1;
+  resetQuestion();queueSave();renderQuiz();
+  if(state.mode==='typing')$('answer-0')?.focus({preventScroll:true});
+ };
  $('mode-typing').onclick=()=>{state.mode='typing';resetQuestion();queueSave();renderQuiz();};
  $('mode-writing').onclick=()=>{state.mode='writing';resetQuestion();queueSave();renderQuiz();};
  $('wrong-only').onchange=event=>{state.wrongOnly=event.target.checked;state.pos=0;resetQuestion();queueSave();renderQuiz();};
