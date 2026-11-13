@@ -60,9 +60,7 @@ if (host) {
     '<span class="muted">40개 처방 · 45문항</span></div><div id="bj-list-items" class="clauses-list"></div></section>',
     '<section id="bj-stats" hidden><h2>내 오답 통계</h2><div id="bj-metrics" class="stats-summary"></div>',
     '<div id="bj-stats-items" class="stats-list"></div></section>',
-    '<p class="support">기준: 「실습시험처방 Clean 2 (1).pdf」 61~100번. 약재 용량과 포제는 채점하지 않습니다.',
-    ' 78번 침향/목향, 100번 과루인(본문)/동과자(그림)는 둘 중 하나를 정답으로 인정합니다.',
-    ' 풀이 기록은 현재 브라우저에 계정별로 저장됩니다.</p></div>'
+    '</div>'
   ].join('');
   const normalize = text => String(text || '').normalize('NFKC').toLowerCase().replace(/[\s\p{P}\p{S}]/gu,'');
   const escape = text => String(text).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -107,10 +105,13 @@ if (host) {
       const button=document.createElement('button');
       const label=displayNumber(q);
       button.type='button';
-      button.className='bj-number'+(current?.id===q.id?' is-current':'');
+      const result=history[q.id];
+      const resultClass=result?.attempts>0?(result.lastCorrect===true?' is-correct':' is-wrong'):'';
+      const resultText=result?.attempts>0?(result.lastCorrect===true?' · 최근 정답':' · 최근 오답'):'';
+      button.className='bj-number'+resultClass+(current?.id===q.id?' is-current':'');
       button.textContent=label;
       button.disabled=!available.some(item=>item.id===q.id);
-      button.title=q.source?label+' · '+q.name+' · '+q.source:label+' · '+q.name;
+      button.title=(q.source?label+' · '+q.name+' · '+q.source:label+' · '+q.name)+resultText;
       button.setAttribute('aria-label',button.title);
       if(current?.id===q.id)button.setAttribute('aria-current','step');
       button.onclick=()=>{
@@ -168,7 +169,7 @@ if (host) {
     const prev=history[q.id]||{attempts:0,wrong:0,reveals:0};
     history[q.id]={attempts:prev.attempts+1,wrong:prev.wrong+(correct?0:1),
       reveals:prev.reveals+(reveal?1:0),lastCorrect:correct,lastAt:Date.now()};
-    save();metrics();graded=true;
+    save();metrics();renderNumberStrip(q);graded=true;
     $('bj-answer').disabled=true;$('bj-check').hidden=true;$('bj-reveal').hidden=true;
     $('bj-next').hidden=false;$('bj-next').focus({preventScroll:true});
   }
