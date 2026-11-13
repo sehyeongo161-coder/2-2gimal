@@ -94,24 +94,27 @@ if (host) {
     $('bj-bar').style.width=(correct/45*100)+'%';
     return {attempted:attempted.length,correct,attempts,wrong};
   }
+  function displayNumber(q){
+    const same=FORMULAS.filter(item=>item.num===q.num);
+    if(same.length===1)return String(q.num);
+    return q.num+'-'+(same.findIndex(item=>item.id===q.id)+1);
+  }
   function renderNumberStrip(current){
     const strip=$('bj-number-strip');
     strip.replaceChildren();
     const available=sequence();
-    for(let num=61;num<=100;num++){
-      const matches=available.filter(q=>q.num===num);
+    for(const q of FORMULAS){
       const button=document.createElement('button');
+      const label=displayNumber(q);
       button.type='button';
-      button.className='bj-number'+(current?.num===num?' is-current':'');
-      button.textContent=String(num);
-      button.disabled=!matches.length;
-      button.title=matches.length>1?'출전별 '+matches.length+'문항':'처방 '+num+'번';
-      button.setAttribute('aria-label',num+'번 처방'+(matches.length>1?' · 출전 '+matches.length+'문항':''));
-      if(current?.num===num)button.setAttribute('aria-current','step');
+      button.className='bj-number'+(current?.id===q.id?' is-current':'');
+      button.textContent=label;
+      button.disabled=!available.some(item=>item.id===q.id);
+      button.title=q.source?label+' · '+q.name+' · '+q.source:label+' · '+q.name;
+      button.setAttribute('aria-label',button.title);
+      if(current?.id===q.id)button.setAttribute('aria-current','step');
       button.onclick=()=>{
-        const next=matches.findIndex(q=>q.id===current?.id);
-        const target=next>=0?matches[(next+1)%matches.length]:matches[0];
-        const index=available.findIndex(q=>q.id===target?.id);
+        const index=available.findIndex(item=>item.id===q.id);
         if(index<0)return;
         position=index;renderQuiz();
       };
@@ -130,7 +133,7 @@ if (host) {
     if(!q)return;
     renderNumberStrip(q);
     $('bj-position').textContent=(position+1)+' / '+items.length;
-    $('bj-title').textContent=q.num+'. '+q.name+' ('+q.hanja+')';
+    $('bj-title').textContent=displayNumber(q)+'. '+q.name+' ('+q.hanja+')';
     $('bj-source').textContent=q.source?'출전 · '+q.source:'실습시험 처방';
     $('bj-answer').value=''; $('bj-answer').disabled=false;
     $('bj-feedback').hidden=true; $('bj-feedback').replaceChildren();
@@ -196,7 +199,7 @@ if (host) {
       const record=history[q.id],btn=document.createElement('button');
       const status=record?(record.lastCorrect?'최근 정답':'복습 필요'):'미학습';
       btn.type='button';btn.className='clause-card';
-      btn.innerHTML='<div class="clause-head"><strong>'+q.num+'. '+escape(q.name)+'</strong>'+
+      btn.innerHTML='<div class="clause-head"><strong>'+displayNumber(q)+'. '+escape(q.name)+'</strong>'+
         '<span class="'+(record?(record.lastCorrect?'status-ok':'status-review'):'status-none')+'">'+status+'</span></div>'+
         '<div class="clause-excerpt">'+escape(q.hanja+(q.source?' · '+q.source:''))+'</div>'+
         '<div class="clause-open">문제 풀기 ›</div>';
@@ -213,7 +216,7 @@ if (host) {
     if(!tried.length){dest.textContent='아직 풀이 기록이 없습니다.';return}
     for(const q of tried){
       const h=history[q.id],btn=document.createElement('button');btn.type='button';btn.className='stat-row';
-      btn.innerHTML='<strong>'+q.num+'. '+escape(q.name)+(q.source?' · '+escape(q.source):'')+'</strong>'+
+      btn.innerHTML='<strong>'+displayNumber(q)+'. '+escape(q.name)+(q.source?' · '+escape(q.source):'')+'</strong>'+
         '<span>풀이 '+h.attempts+'회 · 오답 '+h.wrong+'회</span>'+
         '<b class="'+(h.lastCorrect?'status-ok':'status-review')+'">'+(h.lastCorrect?'최근 정답':'복습 필요')+'</b>';
       btn.onclick=()=>openItem(q);dest.append(btn);
