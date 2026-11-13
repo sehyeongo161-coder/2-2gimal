@@ -1,4 +1,8 @@
 import { FORMULAS, HERB_HANJA } from './bangjae-final-data.js';
+import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import { getAuth } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import { firebaseConfig } from './firebase-config.js';
 const $ = id => document.getElementById(id);
 const host = $('bangjae-area');
 const ALIAS = {
@@ -28,6 +32,10 @@ const EXTRA_HANJA = {
 };
 Object.assign(HERB_HANJA, EXTRA_HANJA);
 if (host) {
+  const app=getApps().length?getApp():initializeApp(firebaseConfig);
+  const quizAuth=getAuth(app),quizDb=getFirestore(app);
+  const CLOUD_PROGRESS_ID='final-2026-bangjae-v1';
+  const FORMULA_IDS=new Set(FORMULAS.map(q=>q.id));
   host.innerHTML = [
     '<div class="summary-card"><div class="summary-title"><strong>방제학 · 실습 처방 구성</strong>',
     '<div class="summary-metrics"><span id="bj-progress"></span><span id="bj-attempts"></span></div></div>',
@@ -42,6 +50,7 @@ if (host) {
     '<option value="random">무작위</option></select>',
     '<label class="checkbox"><input type="checkbox" id="bj-wrong">오답만</label>',
     '<button type="button" id="bj-reset">처음부터</button></div>',
+    '<p id="bj-cloud-warning" class="support" style="color:#a43932;font-size:12px" hidden></p>',
     '<div id="bj-empty" class="empty" hidden><h3>풀 문제가 없습니다.</h3>',
     '<p>오답만 필터를 해제해 주세요.</p></div>',
     '<div id="bj-question"><nav id="bj-number-strip" class="bj-number-strip" aria-label="처방 번호 바로가기"></nav>',
@@ -73,10 +82,97 @@ if (host) {
     return herb.split('/').some(opt => options(opt).includes(normalize(answer)));
   }
   const tokenList = s => String(s).split(/[\s,，、;；·ㆍ]+/).map(x=>x.trim()).filter(Boolean);
-  const storeKey = () => 'final-2026-bangjae-v1:' + ($('account-name')?.textContent.trim() || 'unknown');
-  let history={}, order=FORMULAS.map(q=>q.id), position=0, graded=false, view='quiz';
-  function load(){try{history=JSON.parse(localStorage.getItem(storeKey())||'{}')||{}}catch{history={}}}
-  function save(){try{localStorage.setItem(storeKey(),JSON.stringify(history))}catch{}}
+  // Firebase UID별 저장. 기존 이름 기반 localStorage 기록도 최초 동기화 시 병합합니다.
+  const storeKey=()=> 'final-2026-bangjae-v2:'+userId;
+  const legacyKey=()=>{
+    const name=$('account-name')?.textContent.trim();
+    return name?'final-2026-bangjae-v1:'+name:null;
+  };
+  let history={},order=FORMULAS.map(q=>q.id),position=0,graded=false,view='quiz';
+  let userId='',ready=false,loading=null,saveTimer=null,saveChain=Promise.resolve(),revision=0,pendingUpload=false;
+  const cloudRef=id=>doc(quizDb,'users',id,'progress',encodeURIComponent(CLOUD_PROGRESS_ID));
+  function unpackHistory(raw){
+    try{
+      const data=typeof raw==='string'?JSON.parse(raw):raw;
+      if(!data||typeof data!=='object'||Array.isArray(data))return {};
+      const records=data.history&&typeof data.history==='object'&&!Array.isArray(data.history)?data.history:data;
+      return Object.fromEntries(Object.entries(records).filter(([key,entry])=>
+        FORMULA_IDS.has(key)&&entry&&typeof entry==='object'&&!Array.isArray(entry)&&Number(entry.attempts)>0));
+    }catch{return {}}
+  }
+  function mergeHistory(...sources){
+    const merged={};
+    for(const source of sources){
+      for(const [key,entry] of Object.entries(source||{})){
+        if(!FORMULA_IDS.has(key)||!entry)continue;
+        if(!merged[key]||Number(entry.lastAt||0)>=Number(merged[key].lastAt||0))merged[key]={...entry};
+      }
+    }
+    return merged;
+  }
+  function localHistory(key){
+    if(!key)return {};
+    try{return unpackHistory(localStorage.getItem(key)||'null')}catch{return {}}
+  }
+  function keepLocal(){
+    if(!userId)return;
+    try{localStorage.setItem(storeKey(),JSON.stringify({history,updatedAt:Date.now()}))}catch{}
+  }
+  function warning(text=''){
+    const el=$('bj-cloud-warning');el.hidden=!text;el.textContent=text;
+  }
+  function save(){
+    if(!userId||!ready)return;
+    revision++;pendingUpload=true;keepLocal();
+    clearTimeout(saveTimer);
+    saveTimer=setTimeout(()=>{void flushSave()},650);
+  }
+  function flushSave(){
+    clearTimeout(saveTimer);
+    if(!userId||!ready||!pendingUpload)return saveChain;
+    const savingUid=userId;
+    saveChain=saveChain.catch(()=>{}).then(async()=>{
+      if(quizAuth.currentUser?.uid!==savingUid)return;
+      const seenRevision=revision,ref=cloudRef(savingUid);
+      const snap=await getDoc(ref);
+      if(quizAuth.currentUser?.uid!==savingUid)return;
+      history=mergeHistory(unpackHistory(snap.exists()?snap.data().payload:null),history);
+      keepLocal();
+      await setDoc(ref,{payload:JSON.stringify({schema:1,history,updatedAt:Date.now()}),updatedAt:serverTimestamp()});
+      if(revision===seenRevision)pendingUpload=false;
+      warning();metrics();
+      if(!host.hidden&&view==='quiz')renderNumberStrip(currentQuestion());
+    }).catch(error=>{
+      console.warn('방제학 Firebase 저장:',error);
+      warning('Firebase 동기화 실패 · 현재 기기에 저장되었습니다. 연결이 복구되면 다시 시도합니다.');
+    });
+    return saveChain;
+  }
+  async function load(){
+    const activeUid=quizAuth.currentUser?.uid;
+    if(!activeUid)return;
+    if(loading)return loading;
+    userId=activeUid;ready=false;
+    const browserHistory=localHistory(storeKey()),previousHistory=localHistory(legacyKey());
+    history=mergeHistory(previousHistory,browserHistory);
+    loading=(async()=>{
+      let remoteHistory={},cloudAvailable=false;
+      try{
+        const snap=await getDoc(cloudRef(activeUid));
+        remoteHistory=unpackHistory(snap.exists()?snap.data().payload:null);
+        cloudAvailable=true;warning();
+      }catch(error){
+        console.warn('방제학 Firebase 조회:',error);
+        warning('Firebase 동기화 실패 · 현재 기기에 저장되었습니다. 연결이 복구되면 다시 시도합니다.');
+      }
+      if(quizAuth.currentUser?.uid!==activeUid)return;
+      history=mergeHistory(previousHistory,browserHistory,remoteHistory);
+      ready=true;keepLocal();
+      if(cloudAvailable&&Object.keys(history).some(key=>JSON.stringify(history[key])!==JSON.stringify(remoteHistory[key])))save();
+      if(!host.hidden)selectView(view);
+    })();
+    try{await loading}finally{loading=null}
+  }
   function sequence(){
     const onlyWrong=$('bj-wrong').checked;
     return order.map(id=>FORMULAS.find(q=>q.id===id)).filter(q=>q && (!onlyWrong || history[q.id]?.lastCorrect===false));
@@ -136,7 +232,8 @@ if (host) {
     $('bj-position').textContent=(position+1)+' / '+items.length;
     $('bj-title').textContent=displayNumber(q)+'. '+q.name+' ('+q.hanja+')';
     $('bj-source').textContent=q.source?'출전 · '+q.source:'실습시험 처방';
-    $('bj-answer').value=''; $('bj-answer').disabled=false;
+    $('bj-answer').value=''; $('bj-answer').disabled=!ready;
+    $('bj-check').disabled=!ready;$('bj-reveal').disabled=!ready;
     $('bj-feedback').hidden=true; $('bj-feedback').replaceChildren();
     $('bj-check').hidden=false;$('bj-reveal').hidden=false;$('bj-next').hidden=true;
     $('bj-prior').disabled=items.length<=1; $('bj-skip').disabled=items.length<=1;
@@ -149,7 +246,7 @@ if (host) {
     node.append(cap,val);parent.append(node);
   }
   function grade(reveal=false){
-    if(graded)return;
+    if(graded||!ready||quizAuth.currentUser?.uid!==userId)return;
     const q=currentQuestion();if(!q)return;
     const tokens=reveal?[]:tokenList($('bj-answer').value),remaining=[...tokens],missing=[];
     for(const herb of q.herbs){
@@ -237,6 +334,12 @@ if (host) {
     e.preventDefault();move(1);
   });
   host.querySelectorAll('[data-bj-view]').forEach(btn=>btn.onclick=()=>selectView(btn.dataset.bjView));
-  document.addEventListener('bangjae:show',()=>{load();selectView(view)});
-  load();renderQuiz();
+  document.addEventListener('bangjae:show',()=>{
+    const activeUid=quizAuth.currentUser?.uid||'';
+    if(activeUid!==userId){userId=activeUid;history={};ready=false;pendingUpload=false;}
+    selectView(view);void load();
+  });
+  window.addEventListener('online',()=>{if(userId&&quizAuth.currentUser?.uid===userId)void load().then(()=>flushSave());});
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&pendingUpload)void flushSave();});
+  renderQuiz();
 }
