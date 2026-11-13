@@ -189,9 +189,12 @@ function selectSubject(name){
  selectedSubject=name;
  document.querySelectorAll('[data-subject]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.subject===name)));
  $('sanghan-area').hidden=name!=='sanghan';
- $('subject-pending').hidden=name==='sanghan';
+ $('bangjae-area').hidden=name!=='bangjae';
+ $('subject-pending').hidden=name==='sanghan'||name==='bangjae';
  $('pending-name').textContent=name==='sanghan'?'':document.querySelector('[data-subject="'+name+'"]')?.textContent.trim()||'과목';
- if(name==='sanghan')setView(currentView);else window.scrollTo({top:0,behavior:'instant'});
+ if(name==='sanghan')setView(currentView);
+ else if(name==='bangjae'){document.dispatchEvent(new Event('bangjae:show'));window.scrollTo({top:0,behavior:'instant'});}
+ else window.scrollTo({top:0,behavior:'instant'});
 }
 function syncControls(){
  $('version').value=String(state.version);
