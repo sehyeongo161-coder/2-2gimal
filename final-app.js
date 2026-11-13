@@ -445,6 +445,11 @@ function initEvents(){
   await flushSave();await signOut(auth);location.reload();
  };
  $('sync-status').onclick=()=>{flushSave();};
+ $('shuffle-study-order').onclick=()=>{
+  if(!state||!uid)return;
+  shuffle();
+  if(currentView!=='quiz')setView('quiz');
+ };
  $('reset-study-progress').onclick=async()=>{
   if(!state||!uid)return;
   if(!window.confirm('상한론 통암기 진행률(완료 조문·누적 횟수)을 0으로 초기화하시겠습니까?\n기존 오답 통계와 풀이 기록은 유지됩니다.'))return;
