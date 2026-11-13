@@ -32,7 +32,7 @@ function friendly(error){
  return '요청에 실패했습니다. 연결 상태와 Firebase 설정을 확인해 주세요.';
 }
 function localKey(){return 'final-2026:pending:v1:'+uid;}
-function defaultState(){return {schema:1,updatedAt:0,order:[...NUMBERS],pos:0,version:1,mode:'typing',wrongOnly:false,history:{},blankCoverage:{},blankRounds:{}};}
+function defaultState(){return {schema:1,updatedAt:0,order:[...NUMBERS],pos:0,version:1,mode:'typing',wrongOnly:false,history:{},summaryHistory:{},blankCoverage:{},blankRounds:{}};}
 function safeState(data){
  const s=defaultState();
  if(!data||typeof data!=='object')return s;
@@ -42,6 +42,8 @@ function safeState(data){
  s.mode=data.mode==='writing'?'writing':'typing';
  s.wrongOnly=data.wrongOnly===true;
  s.history=data.history&&typeof data.history==='object'&&!Array.isArray(data.history)?data.history:{};
+ // 이전 풀이 기록은 초기 진행률로 한 번만 이관하며, 초기화 이후에도 오답 통계는 보존합니다.
+ s.summaryHistory=data.summaryHistory&&typeof data.summaryHistory==='object'&&!Array.isArray(data.summaryHistory)?data.summaryHistory:Object.fromEntries(NUMBERS.filter(n=>s.history[n]).map(n=>[n,{attempts:Number(s.history[n].attempts)||0,lastCorrect:s.history[n].lastCorrect===true}]));
  s.blankCoverage=data.blankCoverage&&typeof data.blankCoverage==='object'&&!Array.isArray(data.blankCoverage)?data.blankCoverage:{};
  s.blankRounds=data.blankRounds&&typeof data.blankRounds==='object'&&!Array.isArray(data.blankRounds)?data.blankRounds:{};
  s.updatedAt=Number(data.updatedAt)||0;
@@ -202,7 +204,7 @@ function syncControls(){
  $('mode-typing').setAttribute('aria-pressed',String(state.mode==='typing'));
  $('mode-writing').setAttribute('aria-pressed',String(state.mode==='writing'));
  $('wrong-only').checked=state.wrongOnly;
- const entries=NUMBERS.map(n=>state.history[n]).filter(Boolean);
+ const entries=NUMBERS.map(n=>state.summaryHistory[n]).filter(Boolean);
  const mastered=entries.filter(x=>x.lastCorrect===true).length;
  const attempts=entries.reduce((a,x)=>a+(Number(x.attempts)||0),0);
  $('progress-text').textContent='완료 '+mastered+' / 26조';
@@ -320,6 +322,8 @@ function finishAttempt(correct,revealed,drafts){
   lastCorrect:correct&&!revealed,
   lastAt:Date.now()
  };
+ const priorSummary=state.summaryHistory[item.num]||{};
+ state.summaryHistory[item.num]={attempts:(Number(priorSummary.attempts)||0)+1,lastCorrect:correct&&!revealed};
  const usage=state.blankCoverage[item.num] ||= {};
  currentBlanks.forEach((blank,i)=>{
   const passed=state.mode==='typing'&&!revealed
@@ -441,6 +445,14 @@ function initEvents(){
   await flushSave();await signOut(auth);location.reload();
  };
  $('sync-status').onclick=()=>{flushSave();};
+ $('reset-study-progress').onclick=async()=>{
+  if(!state||!uid)return;
+  if(!window.confirm('상한론 통암기 진행률(완료 조문·누적 횟수)을 0으로 초기화하시겠습니까?\n기존 오답 통계와 풀이 기록은 유지됩니다.'))return;
+  state.summaryHistory={};
+  queueSave();
+  syncControls();
+  await flushSave();
+ };
  document.querySelectorAll('[data-subject]').forEach(button=>button.onclick=()=>selectSubject(button.dataset.subject));
  document.querySelectorAll('[data-view]').forEach(button=>button.onclick=()=>setView(button.dataset.view));
  $('version').onchange=event=>{state.version=Number(event.target.value);resetQuestion();queueSave();renderQuiz();};
