@@ -32,7 +32,7 @@ function friendly(error){
  return '요청에 실패했습니다. 연결 상태와 Firebase 설정을 확인해 주세요.';
 }
 function localKey(){return 'final-2026:pending:v1:'+uid;}
-function defaultState(){return {schema:1,updatedAt:0,order:[...NUMBERS],pos:0,version:1,mode:'typing',wrongOnly:false,history:{},summaryHistory:{},blankCoverage:{},blankRounds:{}};}
+function defaultState(){return {schema:1,updatedAt:0,order:[...NUMBERS],pos:0,version:1,mode:'typing',wrongOnly:false,history:{},summaryHistory:{},setHistory:{},setIndex:1,blankCoverage:{},blankRounds:{}};}
 function safeState(data){
  const s=defaultState();
  if(!data||typeof data!=='object')return s;
@@ -44,6 +44,10 @@ function safeState(data){
  s.history=data.history&&typeof data.history==='object'&&!Array.isArray(data.history)?data.history:{};
  // 이전 풀이 기록은 초기 진행률로 한 번만 이관하며, 초기화 이후에도 오답 통계는 보존합니다.
  s.summaryHistory=data.summaryHistory&&typeof data.summaryHistory==='object'&&!Array.isArray(data.summaryHistory)?data.summaryHistory:Object.fromEntries(NUMBERS.filter(n=>s.history[n]).map(n=>[n,{attempts:Number(s.history[n].attempts)||0,lastCorrect:s.history[n].lastCorrect===true}]));
+ // 세트별 완료 기록은 누적 풀이/오답 기록과 별도로 저장합니다.
+ // 구버전 사용자는 새 기준 적용 시 1세트를 0/26에서 시작합니다.
+ s.setHistory=data.setHistory&&typeof data.setHistory==='object'&&!Array.isArray(data.setHistory)?Object.fromEntries(NUMBERS.filter(n=>data.setHistory[n]===true).map(n=>[n,true])):{};
+ s.setIndex=Number.isSafeInteger(data.setIndex)&&data.setIndex>0?data.setIndex:1;
  s.blankCoverage=data.blankCoverage&&typeof data.blankCoverage==='object'&&!Array.isArray(data.blankCoverage)?data.blankCoverage:{};
  s.blankRounds=data.blankRounds&&typeof data.blankRounds==='object'&&!Array.isArray(data.blankRounds)?data.blankRounds:{};
  s.updatedAt=Number(data.updatedAt)||0;
@@ -205,11 +209,12 @@ function syncControls(){
  $('mode-writing').setAttribute('aria-pressed',String(state.mode==='writing'));
  $('wrong-only').checked=state.wrongOnly;
  const entries=NUMBERS.map(n=>state.summaryHistory[n]).filter(Boolean);
- const mastered=entries.filter(x=>x.lastCorrect===true).length;
+ const completed=NUMBERS.filter(n=>state.setHistory[n]===true).length;
  const attempts=entries.reduce((a,x)=>a+(Number(x.attempts)||0),0);
- $('progress-text').textContent='완료 '+mastered+' / 26조';
+ $('set-text').textContent=state.setIndex+'세트';
+ $('progress-text').textContent='완료 '+completed+' / '+NUMBERS.length+'조';
  $('attempts-text').textContent='누적 '+attempts+'회';
- $('progress-bar').style.width=(mastered/26*100)+'%';
+ $('progress-bar').style.width=(completed/NUMBERS.length*100)+'%';
 }
 function resetQuestion(){graded=false;currentRevealed=false;currentBlanks=[];}
 function renderQuiz(){
@@ -324,6 +329,8 @@ function finishAttempt(correct,revealed,drafts){
  };
  const priorSummary=state.summaryHistory[item.num]||{};
  state.summaryHistory[item.num]={attempts:(Number(priorSummary.attempts)||0)+1,lastCorrect:correct&&!revealed};
+ // 정답 여부와 무관하게 한 세트에서 조문별 첫 풀이만 완료로 집계합니다.
+ state.setHistory[item.num]=true;
  const usage=state.blankCoverage[item.num] ||= {};
  currentBlanks.forEach((blank,i)=>{
   const passed=state.mode==='typing'&&!revealed
@@ -366,7 +373,14 @@ function gradeWritten(correct){
 }
 function go(delta){
  const items=getList();if(!items.length)return;
- state.pos=(Math.min(state.pos,items.length-1)+delta+items.length)%items.length;
+ // 26개 조문을 모두 풀고 다음으로 이동할 때 다음 세트를 시작합니다.
+ if(delta>0&&NUMBERS.every(num=>state.setHistory[num]===true)){
+  state.setHistory={};
+  state.setIndex+=1;
+  state.pos=0;
+ }else{
+  state.pos=(Math.min(state.pos,items.length-1)+delta+items.length)%items.length;
+ }
  resetQuestion();queueSave();renderQuiz();
  $('question-num').scrollIntoView({behavior:'smooth',block:'start'});
  if(state.mode==='typing')requestAnimationFrame(()=>$('answer-0')?.focus({preventScroll:true}));
@@ -454,6 +468,8 @@ function initEvents(){
   if(!state||!uid)return;
   if(!window.confirm('상한론 통암기 진행률(완료 조문·누적 횟수)을 0으로 초기화하시겠습니까?\n기존 오답 통계와 풀이 기록은 유지됩니다.'))return;
   state.summaryHistory={};
+  state.setHistory={};
+  state.setIndex=1;
   queueSave();
   syncControls();
   await flushSave();
