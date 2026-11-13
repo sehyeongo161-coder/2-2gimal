@@ -44,13 +44,14 @@ if (host) {
     '<button type="button" id="bj-reset">처음부터</button></div>',
     '<div id="bj-empty" class="empty" hidden><h3>풀 문제가 없습니다.</h3>',
     '<p>오답만 필터를 해제해 주세요.</p></div>',
-    '<div id="bj-question"><div class="question-head"><span id="bj-position" class="question-count"></span>',
+    '<div id="bj-question"><nav id="bj-number-strip" class="bj-number-strip" aria-label="처방 번호 바로가기"></nav>',
+    '<div class="question-head"><span id="bj-position" class="question-count"></span>',
     '<div class="question-navigation"><button type="button" id="bj-prior">← 이전</button>',
     '<button type="button" id="bj-skip">다음 →</button></div></div>',
     '<h3 id="bj-title" class="question-number"></h3><div id="bj-source" class="question-meta"></div>',
     '<p class="muted" style="font-size:14px;margin:14px 0">구성 약재를 입력해 주세요. 순서는 자유롭고, 쉼표·공백으로 구분합니다.</p>',
-    '<textarea id="bj-answer" rows="4" spellcheck="false" aria-label="구성 약재 입력"',
-    ' placeholder="예: 황기 당귀 백출 감초"></textarea>',
+    '<input id="bj-answer" type="text" spellcheck="false" autocomplete="off" aria-label="구성 약재 입력"',
+    ' placeholder="예: 황기 당귀 백출 감초">',
     '<div class="answer-actions"><button class="primary" type="button" id="bj-check">채점하기</button>',
     '<button type="button" id="bj-reveal">정답 보기</button>',
     '<button class="primary" type="button" id="bj-next" hidden>다음 문제 →</button></div>',
@@ -93,11 +94,41 @@ if (host) {
     $('bj-bar').style.width=(correct/45*100)+'%';
     return {attempted:attempted.length,correct,attempts,wrong};
   }
+  function renderNumberStrip(current){
+    const strip=$('bj-number-strip');
+    strip.replaceChildren();
+    const available=sequence();
+    for(let num=61;num<=100;num++){
+      const matches=available.filter(q=>q.num===num);
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='bj-number'+(current?.num===num?' is-current':'');
+      button.textContent=String(num);
+      button.disabled=!matches.length;
+      button.title=matches.length>1?'출전별 '+matches.length+'문항':'처방 '+num+'번';
+      button.setAttribute('aria-label',num+'번 처방'+(matches.length>1?' · 출전 '+matches.length+'문항':''));
+      if(current?.num===num)button.setAttribute('aria-current','step');
+      button.onclick=()=>{
+        const next=matches.findIndex(q=>q.id===current?.id);
+        const target=next>=0?matches[(next+1)%matches.length]:matches[0];
+        const index=available.findIndex(q=>q.id===target?.id);
+        if(index<0)return;
+        position=index;renderQuiz();
+      };
+      strip.append(button);
+    }
+    const currentButton=strip.querySelector('[aria-current="step"]');
+    if(currentButton){
+      const left=currentButton.offsetLeft-(strip.clientWidth-currentButton.offsetWidth)/2;
+      strip.scrollTo({left:Math.max(0,left),behavior:'instant'});
+    }
+  }
   function renderQuiz(){
     metrics();
     const items=sequence(), q=currentQuestion();
     $('bj-question').hidden=!q; $('bj-empty').hidden=!!q;
     if(!q)return;
+    renderNumberStrip(q);
     $('bj-position').textContent=(position+1)+' / '+items.length;
     $('bj-title').textContent=q.num+'. '+q.name+' ('+q.hanja+')';
     $('bj-source').textContent=q.source?'출전 · '+q.source:'실습시험 처방';
