@@ -52,8 +52,8 @@ h1{font-size:34px;line-height:1.3;letter-spacing:-1.5px;margin:0 0 9px;font-weig
 .summary-title{display:flex;justify-content:space-between;gap:10px;align-items:center}
 .summary-title strong{font-size:18px;letter-spacing:-.4px}
 .summary-metrics{display:flex;gap:12px;align-items:center;font-size:12px;color:#697f9d;font-weight:700}
-.summary-reset{display:inline-flex;align-items:center;justify-content:center;gap:4px;min-height:30px;padding:4px 9px;border:1px solid #cfdced;border-radius:8px;background:#fff;color:#4b6c96;font-size:12px;font-weight:750;white-space:nowrap}
-.summary-reset:hover:not(:disabled){background:#eaf2fc}
+.summary-action{display:inline-flex;align-items:center;justify-content:center;gap:4px;min-height:30px;padding:4px 9px;border:1px solid #cfdced;border-radius:8px;background:#fff;color:#4b6c96;font-size:12px;font-weight:750;white-space:nowrap}
+.summary-action:hover:not(:disabled){background:#eaf2fc}
 @media(max-width:650px){.summary-title{flex-wrap:wrap}.summary-metrics{width:100%;justify-content:flex-end;flex-wrap:wrap}}
 .track{height:7px;background:#e3ebf5;border-radius:99px;overflow:hidden;margin-top:14px}.track-fill{width:0;height:100%;background:#376ca8;border-radius:99px;transition:width .2s}
 .content-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:26px 28px;box-shadow:0 6px 30px rgba(31,50,75,.025)}
@@ -177,7 +177,7 @@ h1{font-size:34px;line-height:1.3;letter-spacing:-1.5px;margin:0 0 9px;font-weig
    </aside>
    <div class="main-content">
     <div id="sanghan-area">
-     <div class="summary-card"><div class="summary-title"><strong>상한론 · 문장 전체 통암기</strong><div class="summary-metrics"><span id="progress-text">완료 0 / 26조</span><span id="attempts-text">누적 0회</span><button id="reset-study-progress" class="summary-reset" type="button" title="통암기 진행률만 초기화" aria-label="통암기 진행률 초기화"><span aria-hidden="true">↻</span> 초기화</button></div></div><div class="track"><div id="progress-bar" class="track-fill"></div></div></div>
+     <div class="summary-card"><div class="summary-title"><strong>상한론 · 문장 전체 통암기</strong><div class="summary-metrics"><span id="progress-text">완료 0 / 26조</span><span id="attempts-text">누적 0회</span><button id="reset-study-progress" class="summary-action" type="button" title="완료·누적·진행률 초기화 (오답 기록 유지)" aria-label="통암기 진행률 초기화"><span aria-hidden="true">↻</span> 새로고침</button><button id="shuffle-study-order" class="summary-action" type="button" title="기록을 유지한 채 조문 순서만 무작위로 섞기" aria-label="조문 순서 셔플"><span aria-hidden="true">⇄</span> 셔플</button></div></div><div class="track"><div id="progress-bar" class="track-fill"></div></div></div>
      <div class="content-card">
       <nav class="section-nav" aria-label="학습 화면"><button data-view="quiz" aria-current="true" type="button">퀴즈</button><button data-view="list" aria-current="false" type="button">전체 목록</button><button data-view="stats" aria-current="false" type="button">내 오답 통계</button></nav>
       <section id="quiz-view">
@@ -211,7 +211,7 @@ h1{font-size:34px;line-height:1.3;letter-spacing:-1.5px;margin:0 0 9px;font-weig
   </div>
  </main>
 </div>
-<script type="module" src="./final-app.js?v=20261113-reset-progress-v1"></script>
+<script type="module" src="./final-app.js?v=20261113-progress-shuffle-v2"></script>
 <script type="module" src="./bangjae-final-quiz.js?v=20261113-v3"></script>
 </body>
 </html>
