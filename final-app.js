@@ -153,12 +153,30 @@ function advanceRound(){
 // 기말고사 21학번 족보: 실제 빈칸 구간이 명확히 복기된 4문항만 표기.
 const PAST_EXAM_BLANKS=Object.freeze({105:[{text:'調胃承氣湯',year:'21학번'}],109:[{text:'大渴欲飮水',year:'21학번'}],118:[{text:'因燒鍼煩躁',year:'21학번'}],136:[{text:'但頭微汗出',year:'21학번'}]});
 function seedHash(text){let h=2166136261;for(const ch of text){h^=ch.codePointAt(0);h=Math.imul(h,16777619);}return h>>>0;}
+// 처방명과 '主之'는 하나의 빈칸으로 묶습니다. 기존 기출 표시는 처방명 부분에만 해당합니다.
+const PRESCRIPTION_NAMES=Object.freeze(["調胃承氣湯","柴胡加龍骨牡蠣湯","桂枝去芍藥加蜀漆龍骨牡蠣救逆湯","桂枝甘草龍骨牡蠣湯","抵當湯","大陷胸湯","小陷胸湯","小柴胡湯","柴胡加桂枝湯","柴胡桂枝乾薑湯"]);
 // 모든 한자에 대응하는 후보 덩어리를 만들고 기출 원형을 유지합니다.
 function getBlankCandidates(clause){
  const original=clause.original,spans=[];
+ for(const name of PRESCRIPTION_NAMES){
+  const text=name+'主之';
+  let start=original.indexOf(text);
+  while(start>=0){
+   spans.push({start,end:start+text.length,text});
+   start=original.indexOf(text,start+text.length);
+  }
+ }
  for(const exam of PAST_EXAM_BLANKS[clause.num]||[]){
   const start=original.indexOf(exam.text);
-  if(start>=0)spans.push({start,end:start+exam.text.length,text:exam.text,pastYear:exam.year});
+  if(start<0)continue;
+  const end=start+exam.text.length;
+  const combined=spans.find(span=>span.start<=start&&span.end>=end);
+  if(combined){
+   combined.pastYear=exam.year;
+   combined.pastExamText=exam.text;
+  }else{
+   spans.push({start,end,text:exam.text,pastYear:exam.year});
+  }
  }
  const result=[];
  function partition(from,to){
@@ -283,7 +301,7 @@ function renderQuiz(){
  currentBlanks.forEach((blank,i)=>{
   passage.append(document.createTextNode(original.slice(last,blank.start)));
   const slot=textNode('span','cloze'+(blank.pastYear?' past-cloze':''),'('+(i+1)+') ______');slot.dataset.index=String(i);
-  if(blank.pastYear)slot.append(textNode('span','past-tag',blank.pastYear+' 기출'));
+  if(blank.pastYear)slot.append(textNode('span','past-tag',blank.pastExamText?'21학번 처방명 기출':blank.pastYear+' 기출'));
   passage.append(slot);last=blank.end;
  });
  passage.append(document.createTextNode(original.slice(last)));
@@ -293,7 +311,7 @@ function renderQuiz(){
  currentBlanks.forEach((blank,i)=>{
   const field=document.createElement('label');field.className='answer-field';
   const caption=textNode('span','field-label','빈칸 '+(i+1));
-  if(blank.pastYear)caption.append(textNode('span','past-input-tag',blank.pastYear+' 기출'));
+  if(blank.pastYear)caption.append(textNode('span','past-input-tag',blank.pastExamText?'21학번 처방명 기출':blank.pastYear+' 기출'));
   field.append(caption);
   const input=document.createElement('input');input.type='text';input.id='answer-'+i;input.autocomplete='off';input.spellcheck=false;input.placeholder='한자 또는 독음 입력';input.dataset.index=String(i);
   input.addEventListener('keydown',event=>{
