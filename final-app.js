@@ -3,7 +3,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/fireba
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, setPersistence, browserSessionPersistence } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, getDocs, collection, setDoc, increment, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import { firebaseConfig } from './firebase-config.js';
-import { CLAUSES } from './final-shanghan-data.js';
+import { CLAUSES } from './final-shanghan-data.js?v=20261120-sanghan-20-v1';
 import { HANJA_READINGS, DUEUM_PAIRS, ALT_READINGS } from './final-hanja-readings.js';
 
 const $ = id => document.getElementById(id);
@@ -36,7 +36,7 @@ function defaultState(){return {schema:2,updatedAt:0,order:[...NUMBERS],orderMod
 function safeState(data){
  const s=defaultState();
  if(!data||typeof data!=='object')return s;
- if(Array.isArray(data.order)&&data.order.length===NUMBERS.length&&NUMBERS.every(n=>data.order.includes(n)))s.order=[...data.order];
+ if(Array.isArray(data.order)){const filtered=data.order.filter(n=>NUMBERS.includes(n));if(filtered.length===NUMBERS.length&&new Set(filtered).size===NUMBERS.length)s.order=filtered;}
  s.orderMode=data.orderMode==='ordered'||data.orderMode==='random'?data.orderMode:(s.order.every((n,i)=>n===NUMBERS[i])?'ordered':'random');
  s.pos=Number.isInteger(data.pos)?Math.max(0,Math.min(NUMBERS.length-1,data.pos)):0;
  s.version=[1,2,3,4,5].includes(Number(data.version))?Number(data.version):1;
@@ -45,9 +45,10 @@ function safeState(data){
  // 이전 풀이 기록은 초기 진행률로 한 번만 이관하며, 초기화 이후에도 오답 통계는 보존합니다.
  s.summaryHistory=data.summaryHistory&&typeof data.summaryHistory==='object'&&!Array.isArray(data.summaryHistory)?data.summaryHistory:Object.fromEntries(NUMBERS.filter(n=>s.history[n]).map(n=>[n,{attempts:Number(s.history[n].attempts)||0,lastCorrect:s.history[n].lastCorrect===true}]));
  // 세트별 완료 기록은 누적 풀이/오답 기록과 별도로 저장합니다.
- // 구버전 사용자는 새 기준 적용 시 1세트를 0/26에서 시작합니다.
+ // 구버전 26조 데이터에서 제외 조문을 걸러내되, 해당 세트 및 기존 오답 기록은 유지합니다.
  s.setHistory=data.setHistory&&typeof data.setHistory==='object'&&!Array.isArray(data.setHistory)?Object.fromEntries(NUMBERS.filter(n=>data.setHistory[n]===true).map(n=>[n,true])):{};
- s.roundNumbers=Array.isArray(data.roundNumbers)&&data.roundNumbers.length>0&&data.roundNumbers.every(n=>NUMBERS.includes(n))&&new Set(data.roundNumbers).size===data.roundNumbers.length?[...data.roundNumbers]:[...NUMBERS];
+ const validRound=Array.isArray(data.roundNumbers)?data.roundNumbers.filter(n=>NUMBERS.includes(n)):[];
+ s.roundNumbers=validRound.length>0&&new Set(validRound).size===validRound.length?validRound:[...NUMBERS];
  s.setResults=data.setResults&&typeof data.setResults==='object'&&!Array.isArray(data.setResults)?Object.fromEntries(s.roundNumbers.filter(n=>data.setResults[n]===true||data.setResults[n]===false).map(n=>[n,data.setResults[n]])):Object.fromEntries(s.roundNumbers.filter(n=>s.setHistory[n]===true).map(n=>[n,s.history[n]?.lastCorrect===true]));
  s.setHistory=Object.fromEntries(s.roundNumbers.filter(n=>s.setHistory[n]===true).map(n=>[n,true]));
  s.setIndex=Number.isSafeInteger(data.setIndex)&&data.setIndex>0?data.setIndex:1;
@@ -151,7 +152,7 @@ function advanceRound(){
 }
 
 // 기말고사 21학번 족보: 실제 빈칸 구간이 명확히 복기된 4문항만 표기.
-const PAST_EXAM_BLANKS=Object.freeze({105:[{text:'調胃承氣湯',year:'21학번'}],109:[{text:'大渴欲飮水',year:'21학번'}],118:[{text:'因燒鍼煩躁',year:'21학번'}],136:[{text:'但頭微汗出',year:'21학번'}]});
+const PAST_EXAM_BLANKS=Object.freeze({105:[{text:'調胃承氣湯',year:'21학번'}],118:[{text:'因燒鍼煩躁',year:'21학번'}],136:[{text:'但頭微汗出',year:'21학번'}]});
 function seedHash(text){let h=2166136261;for(const ch of text){h^=ch.codePointAt(0);h=Math.imul(h,16777619);}return h>>>0;}
 // 쉼표·마침표 등 구두점으로 끊긴 한자 구간을 빈칸 후보 하나로 취급합니다.
 // 처방명 + 主之 및 구두점 없는 문장은 임의의 글자 수로 분할하지 않습니다.
@@ -255,8 +256,8 @@ function renderQuiz(){
  $('quiz-content').hidden=!item;$('quiz-empty').hidden=!!item;
  if(!item){
   $('quiz-empty').querySelector('h3').textContent=state.finished?'모든 조문 학습 완료':'풀 문제가 없습니다.';
-  $('empty-description').textContent=state.finished?'현재 세트의 모든 조문을 맞혔습니다. 새로고침으로 26개 조문을 다시 시작할 수 있습니다.':'등록된 조문이 없습니다.';
-  $('empty-show-all').textContent='26개 다시 시작';
+  $('empty-description').textContent=state.finished?'현재 세트의 모든 조문을 맞혔습니다. 새로고침으로 20개 조문을 다시 시작할 수 있습니다.':'등록된 조문이 없습니다.';
+  $('empty-show-all').textContent='20개 다시 시작';
   $('empty-show-all').hidden=!state.finished;
   return;
  }
@@ -464,7 +465,7 @@ function renderStats(){
  const misses=attempted.reduce((v,x)=>v+(x.wrong||0),0);
  const mastered=attempted.filter(x=>x.lastCorrect).length;
  $('stats-summary').replaceChildren(
-  metric('학습한 조문',attempted.length+' / 26'),
+  metric('학습한 조문',attempted.length+' / '+NUMBERS.length),
   metric('누적 풀이',attempts+'회'),
   metric('오답',misses+'회'),
   metric('최근 정답',mastered+'조')
@@ -515,7 +516,7 @@ function initEvents(){
  };
  const restartStudy=async ask=>{
   if(!state||!uid)return;
-  if(ask&&!window.confirm('현재 상한론 세트를 초기화하고 26개 조문부터 다시 시작하시겠습니까?\n기존 풀이·오답 통계는 유지됩니다.'))return;
+  if(ask&&!window.confirm('현재 상한론 세트를 초기화하고 20개 조문부터 다시 시작하시겠습니까?\n기존 풀이·오답 통계는 유지됩니다.'))return;
   manualClauseNum=null;
   state.summaryHistory={};
   state.roundNumbers=[...NUMBERS];
