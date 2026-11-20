@@ -8,7 +8,7 @@ const gate = $('account-gate'), quizRoot = $('quiz-root'), toolbar = $('account-
 let auth, db, authenticatedUid=null, appLoaded=false, registering=false, statsOpen=false;
 let currentStats=[];
 let lastQuizScroll=0,lastStatsScroll=0;
-const approvedDisplayNames = ['고세현','석주형','홍대진','안선웅','박준영','김지원'];
+const approvedDisplayNames = ['고세현','석주형','홍대진','안선웅','박준영','김지원','정은찬'];
 
 // 이름별 가입용 가상 이메일: 기존 관리자 생성 계정의 이메일과 겹치지 않도록 새 식별자를 사용합니다.
 // 본인 확인 절차가 없으므로 가입 선점 위험이 있습니다. 서버 보안 규칙은 이 이메일 6개만 허용합니다.
