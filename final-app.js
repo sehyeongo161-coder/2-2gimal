@@ -7,7 +7,7 @@ import { CLAUSES } from './final-shanghan-data.js?v=20261120-sanghan-20-v1';
 import { HANJA_READINGS, DUEUM_PAIRS, ALT_READINGS } from './final-hanja-readings.js';
 
 const $ = id => document.getElementById(id);
-const NAMES = ['고세현','석주형','홍대진','안선웅','박준영','김지원','정은찬'];
+const NAMES = ['고세현','석주형','홍대진','안선웅','박준영','김지원','정은찬','리트냥이'];
 const PROGRESS_ID = 'final-2026-shanghan-v1';
 const STATS_PREFIX = 'final-2026-shanghan-';
 const NUMBERS = CLAUSES.map(item => item.num);
