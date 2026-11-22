@@ -7,7 +7,7 @@ import { CLAUSES } from './final-shanghan-data.js?v=20261120-sanghan-20-v1';
 import { HANJA_READINGS, DUEUM_PAIRS, ALT_READINGS } from './final-hanja-readings.js';
 
 const $ = id => document.getElementById(id);
-const NAMES = ['고세현','석주형','홍대진','안선웅','박준영','김지원','정은찬','리트냥이'];
+const NAMES = ['고세현','석주형','홍대진','안선웅','박준영','김지원','정은찬'];
 const PROGRESS_ID = 'final-2026-shanghan-v1';
 const STATS_PREFIX = 'final-2026-shanghan-';
 const NUMBERS = CLAUSES.map(item => item.num);
@@ -494,7 +494,7 @@ function initEvents(){
  $('register-form').onsubmit=async event=>{
   event.preventDefault();message('');
   const name=normalizeName($('register-name').value),password=$('register-password').value,confirm=$('register-confirm').value;
-  if(!NAMES.includes(name)){message('승인된 이름만 가입할 수 있습니다.');return;}
+  if(!NAMES.includes(name)){message('승인되지 않은 이름입니다.');return;}
   if(password.length<6){message('비밀번호를 6자 이상 입력해 주세요.');return;}
   if(password!==confirm){message('비밀번호 확인이 일치하지 않습니다.');return;}
   const form=event.currentTarget;busy(form,true);registering=true;
