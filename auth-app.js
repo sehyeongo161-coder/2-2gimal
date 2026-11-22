@@ -8,7 +8,7 @@ const gate = $('account-gate'), quizRoot = $('quiz-root'), toolbar = $('account-
 let auth, db, authenticatedUid=null, appLoaded=false, registering=false, statsOpen=false;
 let currentStats=[];
 let lastQuizScroll=0,lastStatsScroll=0;
-const approvedDisplayNames = ['고세현','석주형','홍대진','안선웅','박준영','김지원','정은찬','리트냥이'];
+const approvedDisplayNames = ['고세현','석주형','홍대진','안선웅','박준영','김지원','정은찬'];
 
 // 이름별 가입용 가상 이메일: 기존 관리자 생성 계정의 이메일과 겹치지 않도록 새 식별자를 사용합니다.
 // 본인 확인 절차가 없으므로 가입 선점 위험이 있습니다. 서버 보안 규칙은 이 이메일 6개만 허용합니다.
@@ -779,7 +779,7 @@ if(firebaseConfig.apiKey.startsWith('YOUR_')||firebaseConfig.projectId==='YOUR_P
     $('login-form').onsubmit=async e=>{
       e.preventDefault();showMessage('');const form=e.currentTarget;
       const name=normalizeName($('login-name').value);const password=$('login-pass').value;
-      if(!approvedDisplayNames.includes(name)){showMessage('승인된 아이디가 아닙니다.');return;}
+      if(!approvedDisplayNames.includes(name)){showMessage('승인되지 않은 이름입니다.');return;}
       setBusy(form,true);
       try{await signInWithEmailAndPassword(auth,nameEmail(name),password);}
       catch(err){showMessage(friendly(err));}
@@ -789,7 +789,7 @@ if(firebaseConfig.apiKey.startsWith('YOUR_')||firebaseConfig.projectId==='YOUR_P
       e.preventDefault();showMessage('');const form=e.currentTarget;
       const name=normalizeName($('register-name').value);
       const password=$('register-pass').value,confirm=$('register-confirm').value;
-      if(!approvedDisplayNames.includes(name)){showMessage('승인된 아이디가 아닙니다.');return;}
+      if(!approvedDisplayNames.includes(name)){showMessage('승인되지 않은 이름입니다.');return;}
       if(password.length<6){showMessage('Firebase 기본 조건에 따라 비밀번호는 6자 이상이어야 합니다.');return;}
       if(password!==confirm){showMessage('비밀번호 확인란이 일치하지 않습니다.');return;}
       setBusy(form,true);registering=true;let created=false;
