@@ -359,11 +359,12 @@ function renderQuiz(){
    if(event.key!=='Enter'||event.isComposing||event.keyCode===229)return;
    event.preventDefault();
    const entries=currentBlanks.map((_,index)=>$('answer-'+index));
-   // 마지막 칸까지 모두 입력했으면 Enter로 채점합니다.
+   // 모두 입력했거나 마지막 남은 빈칸에 도달하면, 미입력 칸이 있어도 채점합니다.
    if(entries.every(node=>node?.value.trim())){gradeTyped();return;}
-   // 아직 비어 있는 칸은 왼쪽 위부터의 번호 순서대로 채웁니다.
-   const next=entries.find((node,index)=>index>i&&!node.value.trim())||entries.find(node=>!node.value.trim());
-   if(next&&next!==input)next.focus();
+   // Enter는 뒤쪽 미입력 칸으로 이동하고, 더 이상 이동할 빈칸이 없으면 채점합니다.
+   const next=entries.find((node,index)=>index>i&&!node.value.trim());
+   if(next)next.focus();
+   else gradeTyped();
   });
   field.append(input);$('answer-fields').append(field);
  });
