@@ -178,15 +178,13 @@ function makeBlanks(clause,version,progress=state){
  const candidates=getBlankCandidates(clause);
  if(version===5)return candidates;
  const target=[0,3,5,7,9][version]||3;
- const coverage=progress?.blankCoverage?.[clause.num]||{};
  const rounds=Number(progress?.blankRounds?.[clause.num+':'+version])||0;
- const exams=candidates.filter(x=>x.pastYear);
- const pool=candidates.filter(x=>!x.pastYear);
- pool.sort((a,b)=>seedHash(clause.num+':'+version+':'+a.start)-seedHash(clause.num+':'+version+':'+b.start));
- const at=pool.length?((rounds%pool.length)+pool.length)%pool.length:0;
- const rotated=[...pool.slice(at),...pool.slice(0,at)];
- rotated.sort((a,b)=>(Number(coverage[a.id]?.tries)||0)-(Number(coverage[b.id]?.tries)||0));
- return [...exams,...rotated.slice(0,Math.max(0,target-exams.length))].sort((a,b)=>a.start-b.start);
+ // 기출 여부에 관계없이 모든 덩어리를 같은 우선순위로 배치합니다.
+ // 한 번 변경할 때마다 target칸씩 순환하므로, 후보가 더 많으면 반드시 조합이 달라집니다.
+ const pool=[...candidates].sort((a,b)=>seedHash(clause.num+':'+version+':'+a.id)-seedHash(clause.num+':'+version+':'+b.id));
+ const at=pool.length?((rounds*target)%pool.length+pool.length)%pool.length:0;
+ const selected=Array.from({length:Math.min(target,pool.length)},(_,i)=>pool[(at+i)%pool.length]);
+ return selected.sort((a,b)=>a.start-b.start);
 }
 function normalizeAnswer(value){
  return String(value||'').normalize('NFKC').replace(/[\s,.，。．、;；:：!?！？'"‘’“”\-·]/g,'').replace(/[爲为]/g,'為').replace(/不/g,'不').toLowerCase();
@@ -247,6 +245,47 @@ function syncControls(){
  $('shuffle-study-order').disabled=state.finished;
 }
 function resetQuestion(){graded=false;currentRevealed=false;currentBlanks=[];}
+function renderNumberStrip(current){
+ const strip=$('sh-number-strip');
+ strip.replaceChildren();
+ const available=getList();
+ for(const num of NUMBERS){
+  const button=document.createElement('button');
+  button.type='button';
+  const active=available.includes(num);
+  const canOpen=active||manualClauseNum!==null;
+  const attempted=state.setHistory[num]===true;
+  const resultClass=attempted?(state.setResults[num]===true?' is-correct':' is-wrong'):'';
+  button.className='bj-number'+resultClass+(current?.num===num?' is-current':'');
+  button.textContent=num+'조';
+  button.disabled=!canOpen;
+  button.title=num+'조'+(attempted?(state.setResults[num]===true?' · 이번 세트 정답':' · 이번 세트 오답'):(active?'':' · 현재 복습 세트에서 제외'));
+  button.setAttribute('aria-label',button.title);
+  if(current?.num===num)button.setAttribute('aria-current','step');
+  button.onclick=()=>{
+   if(!canOpen)return;
+   if(state.finished||!active){goToClause(num);return;}
+   manualClauseNum=null;
+   state.pos=available.indexOf(num);
+   resetQuestion();queueSave();renderQuiz();
+  };
+  strip.append(button);
+ }
+ const currentButton=strip.querySelector('[aria-current="step"]');
+ if(currentButton){
+  const left=currentButton.offsetLeft-(strip.clientWidth-currentButton.offsetWidth)/2;
+  strip.scrollTo({left:Math.max(0,left),behavior:'instant'});
+ }
+}
+function changeCurrentBlanks(){
+ if(!state)return;
+ const item=currentClause();
+ const target=[0,3,5,7,9][state.version]||3;
+ if(!item||state.version===5||getBlankCandidates(item).length<=target)return;
+ const key=item.num+':'+state.version;
+ state.blankRounds[key]=(Number(state.blankRounds[key])||0)+1;
+ resetQuestion();queueSave();renderQuiz();
+}
 function renderQuiz(){
  if(!state)return;
  syncControls();
@@ -254,6 +293,8 @@ function renderQuiz(){
  const items=manual?[manualClauseNum]:getList();
  const item=state.finished&&!manual?null:currentClause();
  $('quiz-content').hidden=!item;$('quiz-empty').hidden=!!item;
+ const target=[0,3,5,7,9][state.version]||3;
+ $('refresh-study-blanks').disabled=!item||state.version===5||getBlankCandidates(item).length<=target;
  if(!item){
   $('quiz-empty').querySelector('h3').textContent=state.finished?'모든 조문 학습 완료':'풀 문제가 없습니다.';
   $('empty-description').textContent=state.finished?'현재 세트의 모든 조문을 맞혔습니다. 새로고침으로 20개 조문을 다시 시작할 수 있습니다.':'등록된 조문이 없습니다.';
@@ -261,6 +302,7 @@ function renderQuiz(){
   $('empty-show-all').hidden=!state.finished;
   return;
  }
+ renderNumberStrip(item);
  currentBlanks=makeBlanks(item,state.version,state);
  const chunks=getBlankCandidates(item);
  const practiced=chunks.filter(c=>(state.blankCoverage[item.num]?.[c.id]?.tries||0)>0).length;
@@ -382,6 +424,7 @@ function finishAttempt(correct,revealed,drafts){
  queueSave();
  showFeedback(item,correct,revealed,drafts);
  syncControls();
+ renderNumberStrip(item);
 }
 function gradeTyped(){
  if(!state||graded||state.mode!=='typing')return;
@@ -437,7 +480,6 @@ function shuffle(){
  manualClauseNum=null;
  state.orderMode='random';
  shuffleOrder();
- refreshBlankPositions();
  selectFirstUnanswered();
  resetQuestion();queueSave();renderQuiz();
 }
@@ -514,6 +556,11 @@ function initEvents(){
   shuffle();
   if(currentView!=='quiz')setView('quiz');
  };
+ $('refresh-study-blanks').onclick=()=>{
+  if(!state||!uid)return;
+  changeCurrentBlanks();
+  if(currentView!=='quiz')setView('quiz');
+ };
  const restartStudy=async ask=>{
   if(!state||!uid)return;
   if(ask&&!window.confirm('현재 상한론 세트를 초기화하고 20개 조문부터 다시 시작하시겠습니까?\n기존 풀이·오답 통계는 유지됩니다.'))return;
@@ -534,7 +581,7 @@ function initEvents(){
  document.querySelectorAll('[data-subject]').forEach(button=>button.onclick=()=>selectSubject(button.dataset.subject));
  document.querySelectorAll('[data-view]').forEach(button=>button.onclick=()=>setView(button.dataset.view));
  $('version').onchange=event=>{state.version=Number(event.target.value);resetQuestion();queueSave();renderQuiz();};
- // 셔플 버튼이 조문 순서와 빈칸 위치를 함께 갱신합니다.
+ // 셔플은 조문 순서만, 빈칸 변경은 현재 조문의 빈칸 위치만 갱신합니다.
  $('mode-typing').onclick=()=>{state.mode='typing';resetQuestion();queueSave();renderQuiz();};
  $('mode-writing').onclick=()=>{state.mode='writing';resetQuestion();queueSave();renderQuiz();};
  $('order-mode').onchange=event=>{
