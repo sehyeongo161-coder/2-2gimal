@@ -235,6 +235,19 @@ function answerMatches(input,expected){
   return allowed.has(typed);
  });
 }
+// 사이트의 한자 독음 사전을 사용해 각 빈칸의 정답 독음을 표시합니다.
+function correctReading(value){
+ const chars=[...String(value||'').normalize('NFKC')];
+ return chars.map((ch,i)=>{
+  const next=chars[i+1]||'',prev=chars[i-1]||'';
+  // 기말 20개 조문에서 문맥에 따라 독음이 달라지는 다의자.
+  if(ch==='便'&&(prev==='小'||prev==='大'))return '변';
+  if(ch==='數')return '삭';
+  if(ch==='惡'&&next==='寒')return '오';
+  if(ch==='更'&&next==='加')return '갱';
+  return HANJA_READINGS[ch]||ch;
+ }).join('');
+}
 function textNode(tag,className,value){const el=document.createElement(tag);if(className)el.className=className;el.textContent=value;return el;}
 function setView(view){
  currentView=view;
@@ -389,6 +402,7 @@ function showFeedback(item,correct,revealed,drafts){
   const evaluated=state.mode==='typing'&&!revealed;
   const passed=evaluated&&answerMatches(user,blank.text);
   const row=textNode('div','result-row'+(evaluated?(passed?' result-correct':' result-wrong'):''),(evaluated?(passed?'O  ':'X  '):'')+'빈칸 '+(i+1)+'  '+blank.text);
+  row.append(textNode('small','result-reading','정답 독음: '+correctReading(blank.text)));
   if(evaluated){
    row.append(textNode('small','result-your','입력: '+(user||'(미입력)')));
    // 개별 빈칸과 입력란에도 O/X 결과 표시
@@ -477,7 +491,11 @@ function revealAnswer(){
   currentRevealed=true;
   const panel=$('answer-feedback');panel.replaceChildren();
   panel.append(textNode('h3','','정답 확인 · 스스로 채점'));
-  currentBlanks.forEach((blank,i)=>panel.append(textNode('div','result-row','빈칸 '+(i+1)+'  '+blank.text)));
+  currentBlanks.forEach((blank,i)=>{
+   const row=textNode('div','result-row','빈칸 '+(i+1)+'  '+blank.text);
+   row.append(textNode('small','result-reading','정답 독음: '+correctReading(blank.text)));
+   panel.append(row);
+  });
   panel.hidden=false;$('translation').hidden=false;
   $('button-reveal').hidden=true;$('button-correct').hidden=false;$('button-wrong').hidden=false;
   requestAnimationFrame(()=>panel.scrollIntoView({behavior:'smooth',block:'nearest'}));
