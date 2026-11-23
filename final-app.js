@@ -32,7 +32,7 @@ function friendly(error){
  return '요청에 실패했습니다. 연결 상태와 Firebase 설정을 확인해 주세요.';
 }
 function localKey(){return 'final-2026:pending:v1:'+uid;}
-function defaultState(){return {schema:2,updatedAt:0,order:[...NUMBERS],orderMode:'ordered',pos:0,version:1,mode:'typing',history:{},summaryHistory:{},roundNumbers:[...NUMBERS],setHistory:{},setResults:{},setIndex:1,finished:false,blankCoverage:{},blankRounds:{}};}
+function defaultState(){return {schema:2,updatedAt:0,order:[...NUMBERS],orderMode:'ordered',pos:0,version:1,mode:'typing',history:{},summaryHistory:{},roundNumbers:[...NUMBERS],setHistory:{},setResults:{},setIndex:1,finished:false,blankCoverage:{},blankRounds:{},blankSelections:{}};}
 function safeState(data){
  const s=defaultState();
  if(!data||typeof data!=='object')return s;
@@ -55,6 +55,7 @@ function safeState(data){
  s.finished=data.finished===true;
  s.blankCoverage=data.blankCoverage&&typeof data.blankCoverage==='object'&&!Array.isArray(data.blankCoverage)?data.blankCoverage:{};
  s.blankRounds=data.blankRounds&&typeof data.blankRounds==='object'&&!Array.isArray(data.blankRounds)?data.blankRounds:{};
+ s.blankSelections=data.blankSelections&&typeof data.blankSelections==='object'&&!Array.isArray(data.blankSelections)?data.blankSelections:{};
  s.updatedAt=Number(data.updatedAt)||0;
  return s;
 }
@@ -178,6 +179,13 @@ function makeBlanks(clause,version,progress=state){
  const candidates=getBlankCandidates(clause);
  if(version===5)return candidates;
  const target=[0,3,5,7,9][version]||3;
+ // 오답 복습용 빈칸 조합은 페이지 이동/새로고침 후에도 동일하게 유지합니다.
+ const stored=progress?.blankSelections?.[clause.num+':'+version];
+ if(Array.isArray(stored)){
+  const ids=new Set(stored);
+  const selected=candidates.filter(candidate=>ids.has(candidate.id));
+  if(selected.length===Math.min(target,candidates.length))return selected;
+ }
  const rounds=Number(progress?.blankRounds?.[clause.num+':'+version])||0;
  // 기출 여부에 관계없이 모든 덩어리를 같은 우선순위로 배치합니다.
  // 한 번 변경할 때마다 target칸씩 순환하므로, 후보가 더 많으면 반드시 조합이 달라집니다.
@@ -185,6 +193,25 @@ function makeBlanks(clause,version,progress=state){
  const at=pool.length?((rounds*target)%pool.length+pool.length)%pool.length:0;
  const selected=Array.from({length:Math.min(target,pool.length)},(_,i)=>pool[(at+i)%pool.length]);
  return selected.sort((a,b)=>a.start-b.start);
+}
+// 이전에 틀린 빈칸은 고정하고, 맞힌 빈칸 자리에는 다른 후보를 무작위로 채웁니다.
+// 새 후보가 부족한 경우에만 기존 정답 빈칸을 다시 사용합니다.
+function makeRetryBlanks(clause,version,previous,wrongIds){
+ const candidates=getBlankCandidates(clause);
+ const target=version===5?candidates.length:Math.min([0,3,5,7,9][version]||3,candidates.length);
+ const locked=new Set(wrongIds);
+ const previousIds=new Set(previous.map(blank=>blank.id));
+ const kept=candidates.filter(blank=>locked.has(blank.id));
+ const randomize=items=>{
+  for(let i=items.length-1;i>0;i--){
+   const j=Math.floor(Math.random()*(i+1));
+   [items[i],items[j]]=[items[j],items[i]];
+  }
+  return items;
+ };
+ const fresh=randomize(candidates.filter(blank=>!previousIds.has(blank.id)));
+ const fallback=randomize(candidates.filter(blank=>previousIds.has(blank.id)&&!locked.has(blank.id)));
+ return [...kept,...fresh,...fallback].slice(0,target).map(blank=>blank.id);
 }
 function normalizeAnswer(value){
  return String(value||'').normalize('NFKC').replace(/[\s,.，。．、;；:：!?！？'"‘’“”\-·]/g,'').replace(/[爲为]/g,'為').replace(/不/g,'不').toLowerCase();
@@ -283,7 +310,7 @@ function changeCurrentBlanks(){
  const target=[0,3,5,7,9][state.version]||3;
  if(!item||state.version===5||getBlankCandidates(item).length<=target)return;
  const key=item.num+':'+state.version;
- state.blankRounds[key]=(Number(state.blankRounds[key])||0)+1;
+ state.blankSelections[key]=makeRetryBlanks(item,state.version,currentBlanks,[]);
  resetQuestion();queueSave();renderQuiz();
 }
 function renderQuiz(){
@@ -420,6 +447,17 @@ function finishAttempt(correct,revealed,drafts){
    wrong:(Number(oldChunk.wrong)||0)+(passed?0:1)
   };
  });
+ const blankKey=item.num+':'+state.version;
+ if(correct&&!revealed){
+  delete state.blankSelections[blankKey];
+ }else{
+  // 타자 입력에서는 개별 O/X를 반영합니다. 한자쓰기/정답 보기에서는
+  // 어떤 빈칸이 맞았는지 알 수 없으므로 현재 빈칸 전체를 유지합니다.
+  const wrongIds=currentBlanks.filter((blank,i)=>
+   revealed||state.mode!=='typing'||!answerMatches(drafts?.[i]||'',blank.text)
+  ).map(blank=>blank.id);
+  state.blankSelections[blankKey]=makeRetryBlanks(item,state.version,currentBlanks,wrongIds);
+ }
  recordAttempt(item.num,correct,revealed);
  queueSave();
  showFeedback(item,correct,revealed,drafts);
@@ -569,6 +607,7 @@ function initEvents(){
   state.roundNumbers=[...NUMBERS];
   state.setHistory={};
   state.setResults={};
+  state.blankSelections={};
   state.finished=false;
   state.setIndex=1;
   state.pos=0;
