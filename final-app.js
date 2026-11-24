@@ -464,7 +464,8 @@ function finishAttempt(correct,revealed,drafts){
  });
  const blankKey=item.num+':'+state.version;
  if(correct&&!revealed){
-  delete state.blankSelections[blankKey];
+  // 정답 조문을 다시 열면 직전과 다른 복습용 빈칸 조합을 출제합니다.
+  state.blankSelections[blankKey]=makeRetryBlanks(item,state.version,currentBlanks,[]);
  }else{
   // 타자 입력에서는 개별 O/X를 반영합니다. 한자쓰기/정답 보기에서는
   // 어떤 빈칸이 맞았는지 알 수 없으므로 현재 빈칸 전체를 유지합니다.
