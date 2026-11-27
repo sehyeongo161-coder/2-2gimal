@@ -7,6 +7,7 @@ import { CLAUSES } from './final-shanghan-data.js?v=20261124-sanghan-136-v2';
 import { HANJA_READINGS, DUEUM_PAIRS, ALT_READINGS } from './final-hanja-readings.js?v=20261124-sanghan-136-v2';
 
 const $ = id => document.getElementById(id);
+const appleTouchKeyboard=(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1));
 const NAMES = ['고세현','석주형','홍대진','안선웅','박준영','김지원','정은찬'];
 const PROGRESS_ID = 'final-2026-shanghan-v1';
 const STATS_PREFIX = 'final-2026-shanghan-';
@@ -361,7 +362,7 @@ function renderQuiz(){
  passage.append(document.createTextNode(original.slice(last)));
  // 입력란을 교체하기 전에 이전 키보드 조합 세션을 종료합니다.
  const activeAnswer=document.activeElement;
- if(activeAnswer?.matches('#answer-fields input'))activeAnswer.blur();
+ if(activeAnswer?.matches('#answer-fields .quiz-answer'))activeAnswer.blur();
  $('answer-fields').replaceChildren();
  $('answer-fields').style.setProperty('--blank-rows',String(Math.max(1,Math.ceil(currentBlanks.length/2))));
  const writing=state.mode==='writing';
@@ -370,7 +371,7 @@ function renderQuiz(){
   const caption=textNode('span','field-label','빈칸 '+(i+1));
   if(blank.pastYear)caption.append(textNode('span','past-input-tag',blank.pastExamText&&blank.pastExamText!==blank.text?blank.pastYear+' 기출 포함':blank.pastYear+' 기출'));
   field.append(caption);
-  const input=document.createElement('input');input.type='text';input.id='answer-'+i;input.autocomplete='off';input.spellcheck=false;input.setAttribute('autocorrect','off');input.setAttribute('autocapitalize','off');input.placeholder='한자 또는 독음 입력';input.dataset.index=String(i);
+  const input=document.createElement(appleTouchKeyboard?'textarea':'input');if(appleTouchKeyboard){input.rows=1;input.classList.add('apple-ime-answer');}else input.type='text';input.classList.add('quiz-answer');input.id='answer-'+i;input.autocomplete='off';input.spellcheck=false;input.setAttribute('autocorrect','off');input.setAttribute('autocapitalize','off');input.placeholder='한자 또는 독음 입력';input.dataset.index=String(i);
   // iPadOS의 한글 IME 조합 중에는 채점·포커스 이동을 하지 않습니다.
   let composing=false;
   input.addEventListener('compositionstart',()=>{composing=true;});
@@ -435,7 +436,7 @@ function showFeedback(item,correct,revealed,drafts){
  $('button-grade').hidden=true;$('button-reveal').hidden=true;
  $('button-correct').hidden=true;$('button-wrong').hidden=true;
  $('button-next').hidden=false;
- $('answer-fields').querySelectorAll('input').forEach(i=>i.disabled=true);
+ $('answer-fields').querySelectorAll('.quiz-answer').forEach(i=>i.disabled=true);
  graded=true;
  // Enter를 다시 누르면 다음 조문으로 넘어가도록 포커스를 옮깁니다.
  if(state.mode==='typing')$('button-next').focus({preventScroll:true});

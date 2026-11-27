@@ -4,6 +4,7 @@ import { getAuth } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-aut
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import { firebaseConfig } from './firebase-config.js';
 const $ = id => document.getElementById(id);
+const appleTouchKeyboard=(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1));
 const host = $('bangjae-area');
 const ALIAS = {
   '생건지황':['건지황','생지황'], '소맥':['밀'], '이당':['교이'],
@@ -59,8 +60,7 @@ if (host) {
     '<button type="button" id="bj-skip">다음 →</button></div></div>',
     '<h3 id="bj-title" class="question-number"></h3><div id="bj-source" class="question-meta"></div>',
     '<p class="muted" style="font-size:14px;margin:14px 0">구성 약재를 입력해 주세요. 순서는 자유롭고, 쉼표·공백으로 구분합니다.</p>',
-    '<input id="bj-answer" type="text" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" aria-label="구성 약재 입력"',
-    ' placeholder="예: 황기 당귀 백출 감초">',
+    appleTouchKeyboard?'<textarea id="bj-answer" class="apple-ime-answer" rows="1" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" aria-label="구성 약재 입력" placeholder="예: 황기 당귀 백출 감초"></textarea>':'<input id="bj-answer" type="text" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" aria-label="구성 약재 입력" placeholder="예: 황기 당귀 백출 감초">',
     '<div class="answer-actions"><button class="primary" type="button" id="bj-check">채점하기</button>',
     '<button type="button" id="bj-reveal">정답 보기</button>',
     '<button class="primary" type="button" id="bj-next" hidden>다음 문제 →</button></div>',
