@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>아이패드 한글 입력 테스트</title>
+<style>body{font:17px system-ui,sans-serif;max-width:660px;margin:30px auto;padding:0 18px;color:#22344e}input,textarea{font:16px system-ui,sans-serif;box-sizing:border-box;width:100%;padding:12px;border:1px solid #aabbd0;border-radius:8px;background:white;color:#22344e}label{display:block;margin:22px 0 6px;font-weight:600}textarea{resize:vertical}p{line-height:1.6}button{padding:9px 14px;font:inherit}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;max-height:240px;overflow:auto;background:#f3f5f8;padding:10px}</style>
+<h1>아이패드 한글 입력 테스트</h1>
+<p>각 칸에서 '가나다' 입력 → 지우기 → '마바사' 입력을 반복해 주세요. 이전 글자가 다시 나타나는 칸의 번호를 확인하면 됩니다.</p>
+<label for="plain">1. 기본 입력창 (사이트 기능 없음)</label><input id="plain" type="text" placeholder="가나다">
+<label for="quiz">2. 현재 퀴즈 방식의 입력창</label><input id="quiz" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="가나다">
+<label for="area">3. 대체 입력창 (textarea)</label><textarea id="area" rows="2" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="가나다"></textarea>
+<p>아래 기록은 이 화면에서만 표시되며 서버로 전송하지 않습니다.</p><button id="clear" type="button">기록 지우기</button><pre id="log" aria-live="off"></pre>
+<script>
+const records=[], log=document.getElementById('log');
+for(const id of ['plain','quiz','area']){
+ const field=document.getElementById(id);
+ for(const name of ['keydown','beforeinput','input','compositionstart','compositionupdate','compositionend','blur']){
+  field.addEventListener(name,e=>{
+   records.push([id,name,e.inputType||'',e.key||'',e.isComposing?'IME':'', 'length='+field.value.length].filter(Boolean).join(' '));
+   if(records.length>80)records.shift();
+   log.textContent=records.join('\n');log.scrollTop=log.scrollHeight;
+  });
+ }
+}
+document.getElementById('clear').onclick=()=>{records.length=0;log.textContent=''};
+</script></html>
