@@ -373,13 +373,12 @@ function renderQuiz(){
   field.append(caption);
   const input=document.createElement(appleTouchKeyboard?'textarea':'input');if(appleTouchKeyboard){input.rows=1;input.classList.add('apple-ime-answer');}else input.type='text';input.classList.add('quiz-answer');input.id='answer-'+i;input.autocomplete='off';input.spellcheck=false;input.setAttribute('autocorrect','off');input.setAttribute('autocapitalize','off');input.placeholder='한자 또는 독음 입력';input.dataset.index=String(i);
   // iPadOS의 한글 IME 조합 중에는 채점·포커스 이동을 하지 않습니다.
-  let composing=false;
-  input.addEventListener('compositionstart',()=>{composing=true;});
+  let composing=false,enterArmed=false;
+  input.addEventListener('compositionstart',()=>{composing=true;enterArmed=false;});
   input.addEventListener('compositionend',()=>{composing=false;});
-  input.addEventListener('blur',()=>{composing=false;});
-  input.addEventListener('keydown',event=>{
-   if(event.key!=='Enter'||composing||event.isComposing||event.keyCode===229)return;
-   event.preventDefault();
+  input.addEventListener('blur',()=>{composing=false;enterArmed=false;});
+  function advanceAnswer(){
+   if(!input.isConnected||graded||state.mode!=='typing')return;
    const entries=currentBlanks.map((_,index)=>$('answer-'+index));
    // 모두 입력했거나 마지막 남은 빈칸에 도달하면, 미입력 칸이 있어도 채점합니다.
    if(entries.every(node=>node?.value.trim())){gradeTyped();return;}
@@ -387,6 +386,27 @@ function renderQuiz(){
    const next=entries.find((node,index)=>index>i&&!node.value.trim());
    if(next)next.focus();
    else gradeTyped();
+  }
+  input.addEventListener('keydown',event=>{
+   if(event.key!=='Enter')return;
+   if(composing||event.isComposing||event.keyCode===229){enterArmed=false;return;}
+   event.preventDefault();
+   if(!appleTouchKeyboard){advanceAnswer();return;}
+   if(!event.repeat)enterArmed=true;
+  });
+  // iPad 외장 키보드: Enter keydown 중 다른 입력창에 포커스하면
+  // 아직 종료되지 않은 한글 조합이 새 입력창에 전달될 수 있습니다.
+  input.addEventListener('keyup',event=>{
+   if(!appleTouchKeyboard||event.key!=='Enter'||!enterArmed)return;
+   enterArmed=false;
+   if(composing||event.isComposing||event.keyCode===229||document.activeElement!==input)return;
+   event.preventDefault();
+   input.blur();
+   setTimeout(()=>{
+    if(!input.isConnected||graded||!$('quiz-view').contains(input)||$('quiz-view').hidden||$('sanghan-area').hidden)return;
+    if(document.activeElement!==document.body&&document.activeElement!==document.documentElement)return;
+    advanceAnswer();
+   },60);
   });
   field.append(input);$('answer-fields').append(field);
  });
@@ -540,7 +560,11 @@ function go(delta){
  }
  resetQuestion();queueSave();renderQuiz();
  $('quiz-view').scrollIntoView({behavior:'smooth',block:'start'});
- if(state.mode==='typing'&&!state.finished)requestAnimationFrame(()=>$('answer-0')?.focus({preventScroll:true}));
+ if(state.mode==='typing'&&!state.finished){
+  const first=$('answer-0');
+  if(appleTouchKeyboard)setTimeout(()=>{if(first?.isConnected&&!graded&&!$('sanghan-area').hidden&&!$('quiz-view').hidden&&(document.activeElement===document.body||document.activeElement===$('button-next')))first.focus({preventScroll:true});},60);
+  else requestAnimationFrame(()=>first?.focus({preventScroll:true}));
+ }
 }
 function shuffle(){
  if(state.finished)return;
@@ -659,6 +683,12 @@ function initEvents(){
  $('question-prior').onclick=()=>go(-1);
  $('question-next').onclick=()=>go(1);
  $('button-next').onclick=()=>go(1);
+ if(appleTouchKeyboard){
+  let nextArmed=false;
+  $('button-next').addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229){event.preventDefault();if(!event.repeat)nextArmed=true;}});
+  $('button-next').addEventListener('keyup',event=>{if(event.key==='Enter'&&nextArmed){nextArmed=false;event.preventDefault();$('button-next').blur();go(1);}});
+  $('button-next').addEventListener('blur',()=>{nextArmed=false;});
+ }
  $('button-grade').onclick=gradeTyped;
  $('button-reveal').onclick=revealAnswer;
  $('button-correct').onclick=()=>gradeWritten(true);
