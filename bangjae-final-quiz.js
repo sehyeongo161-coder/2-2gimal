@@ -59,7 +59,7 @@ if (host) {
     '<button type="button" id="bj-skip">다음 →</button></div></div>',
     '<h3 id="bj-title" class="question-number"></h3><div id="bj-source" class="question-meta"></div>',
     '<p class="muted" style="font-size:14px;margin:14px 0">구성 약재를 입력해 주세요. 순서는 자유롭고, 쉼표·공백으로 구분합니다.</p>',
-    '<input id="bj-answer" type="text" spellcheck="false" autocomplete="off" aria-label="구성 약재 입력"',
+    '<input id="bj-answer" type="text" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" aria-label="구성 약재 입력"',
     ' placeholder="예: 황기 당귀 백출 감초">',
     '<div class="answer-actions"><button class="primary" type="button" id="bj-check">채점하기</button>',
     '<button type="button" id="bj-reveal">정답 보기</button>',
@@ -232,6 +232,7 @@ if (host) {
     $('bj-position').textContent=(position+1)+' / '+items.length;
     $('bj-title').textContent=displayNumber(q)+'. '+q.name+' ('+q.hanja+')';
     $('bj-source').textContent=q.source?'출전 · '+q.source:'실습시험 처방';
+    if(document.activeElement===$('bj-answer'))$('bj-answer').blur();
     $('bj-answer').value=''; $('bj-answer').disabled=!ready;
     $('bj-check').disabled=!ready;$('bj-reveal').disabled=!ready;
     $('bj-feedback').hidden=true; $('bj-feedback').replaceChildren();
@@ -325,8 +326,12 @@ if (host) {
   $('bj-reset').onclick=()=>{if($('bj-order').value==='random')shuffled();position=0;renderQuiz()};
   $('bj-prior').onclick=()=>move(-1);$('bj-skip').onclick=()=>move(1);$('bj-next').onclick=()=>move(1);
   $('bj-check').onclick=()=>grade();$('bj-reveal').onclick=()=>grade(true);
+  let composing=false;
+  $('bj-answer').addEventListener('compositionstart',()=>{composing=true;});
+  $('bj-answer').addEventListener('compositionend',()=>{composing=false;});
+  $('bj-answer').addEventListener('blur',()=>{composing=false;});
   $('bj-answer').addEventListener('keydown',e=>{
-    if(e.key!=='Enter'||e.shiftKey||e.isComposing||e.keyCode===229)return;
+    if(e.key!=='Enter'||e.shiftKey||composing||e.isComposing||e.keyCode===229)return;
     e.preventDefault();grade();
   });
   $('bj-next').addEventListener('keydown',e=>{

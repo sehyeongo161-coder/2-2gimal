@@ -359,6 +359,9 @@ function renderQuiz(){
   passage.append(slot);last=blank.end;
  });
  passage.append(document.createTextNode(original.slice(last)));
+ // 입력란을 교체하기 전에 이전 키보드 조합 세션을 종료합니다.
+ const activeAnswer=document.activeElement;
+ if(activeAnswer?.matches('#answer-fields input'))activeAnswer.blur();
  $('answer-fields').replaceChildren();
  $('answer-fields').style.setProperty('--blank-rows',String(Math.max(1,Math.ceil(currentBlanks.length/2))));
  const writing=state.mode==='writing';
@@ -367,9 +370,14 @@ function renderQuiz(){
   const caption=textNode('span','field-label','빈칸 '+(i+1));
   if(blank.pastYear)caption.append(textNode('span','past-input-tag',blank.pastExamText&&blank.pastExamText!==blank.text?blank.pastYear+' 기출 포함':blank.pastYear+' 기출'));
   field.append(caption);
-  const input=document.createElement('input');input.type='text';input.id='answer-'+i;input.autocomplete='off';input.spellcheck=false;input.placeholder='한자 또는 독음 입력';input.dataset.index=String(i);
+  const input=document.createElement('input');input.type='text';input.id='answer-'+i;input.autocomplete='off';input.spellcheck=false;input.setAttribute('autocorrect','off');input.setAttribute('autocapitalize','off');input.placeholder='한자 또는 독음 입력';input.dataset.index=String(i);
+  // iPadOS의 한글 IME 조합 중에는 채점·포커스 이동을 하지 않습니다.
+  let composing=false;
+  input.addEventListener('compositionstart',()=>{composing=true;});
+  input.addEventListener('compositionend',()=>{composing=false;});
+  input.addEventListener('blur',()=>{composing=false;});
   input.addEventListener('keydown',event=>{
-   if(event.key!=='Enter'||event.isComposing||event.keyCode===229)return;
+   if(event.key!=='Enter'||composing||event.isComposing||event.keyCode===229)return;
    event.preventDefault();
    const entries=currentBlanks.map((_,index)=>$('answer-'+index));
    // 모두 입력했거나 마지막 남은 빈칸에 도달하면, 미입력 칸이 있어도 채점합니다.
